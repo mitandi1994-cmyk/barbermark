@@ -10,10 +10,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Sistem Absensi Barbermark">
   
-  <!-- FAVICON -->
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="apple-touch-icon" href="favicon.png">
-
   <title>Barbermark Absensi</title>
   
   <!-- Tailwind CSS CDN -->
@@ -42,6 +38,25 @@
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+    /* Form Alasan Textarea */
+    .input-reason {
+      width: 100%;
+      background-color: #27272a;
+      border: 1px solid #3f3f46;
+      color: white;
+      padding: 1rem;
+      border-radius: 1rem;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      outline: none;
+      resize: none;
+      min-height: 100px;
+    }
+    .input-reason:focus {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+
     .input-field {
       width: 100%;
       background-color: #27272a;
@@ -57,6 +72,25 @@
       border-color: #ef4444;
       box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
     }
+
+    /* Image Modal for History */
+    .modal-image-container {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .modal-image-container img {
+      max-width: 90%;
+      max-height: 80%;
+      border-radius: 1rem;
+      box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    .modal-image-container.active { display: flex; }
   </style>
 </head>
 <body class="text-white h-[100dvh] w-screen overflow-hidden antialiased selection:bg-red-500 selection:text-white">
@@ -97,7 +131,7 @@
       </nav>
       <div class="mt-auto pt-6 border-t border-white/10">
         <div class="flex items-center gap-3 mb-4">
-          <img id="sidebar-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full bg-zinc-800" />
+          <img id="sidebar-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full bg-zinc-800 object-cover" />
           <div class="overflow-hidden">
             <p id="desktop-user-name" class="font-bold truncate">Loading...</p>
             <p id="desktop-user-job" class="text-xs text-zinc-400">Loading...</p>
@@ -150,7 +184,7 @@
 
           <div id="container-btn-capture" class="absolute bottom-8 sm:bottom-10 left-0 right-0 flex justify-center z-20">
             <button id="btn-capture" class="w-16 h-16 sm:w-20 sm:h-20 bg-red-500 hover:bg-red-600 rounded-full border-4 border-white/25 flex items-center justify-center transition-all duration-300 active:scale-95 shadow-2xl shadow-red-500/20">
-              <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5z"/></svg>
+              <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5-4.5z"/></svg>
             </button>
           </div>
 
@@ -170,6 +204,8 @@
       <!-- Tab 2: Profile -->
       <div id="view-profile" class="hidden w-full h-full lg:p-4 pb-24 overflow-y-auto no-scrollbar bg-zinc-950">
         <div class="max-w-3xl mx-auto pt-20 lg:pt-0 px-4 pb-8">
+          
+          <!-- Profile Card -->
           <div class="bg-zinc-900/50 border border-white/5 rounded-[2rem] p-6 sm:p-8 backdrop-blur-md text-center sm:text-left flex flex-col sm:flex-row items-center gap-6 sm:gap-8 shadow-xl relative overflow-hidden">
             <div class="relative flex-shrink-0 group cursor-pointer" id="btn-edit-profile-trigger">
               <div class="w-28 h-28 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 p-1 transition-transform group-hover:scale-105">
@@ -197,13 +233,26 @@
             </div>
           </div>
 
+          <!-- Stats -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
-            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Hadir</p><p class="text-2xl sm:text-3xl font-black text-green-500">24</p></div>
-            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Terlambat</p><p class="text-2xl sm:text-3xl font-black text-yellow-500">2</p></div>
-            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Izin</p><p class="text-2xl sm:text-3xl font-black text-blue-500">0</p></div>
-            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Alpha</p><p class="text-2xl sm:text-3xl font-black text-red-500">0</p></div>
+            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Hadir</p><p id="stat-hadir" class="text-2xl sm:text-3xl font-black text-green-500">0</p></div>
+            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Terlambat</p><p id="stat-telat" class="text-2xl sm:text-3xl font-black text-yellow-500">0</p></div>
+            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Izin</p><p id="stat-izin" class="text-2xl sm:text-3xl font-black text-blue-500">0</p></div>
+            <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center"><p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Alpha</p><p id="stat-alpha" class="text-2xl sm:text-3xl font-black text-red-500">0</p></div>
           </div>
 
+          <!-- Alpha Status Banner -->
+          <div id="alpha-warning-banner" class="hidden mt-4 bg-red-900/30 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
+            <div class="bg-red-500/20 p-2 rounded-full">
+                <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div>
+                <h4 class="text-red-400 font-bold text-sm">Belum Absen Hari Ini</h4>
+                <p class="text-xs text-red-300/70">Segera lakukan absensi sebelum dihitung Alpha otomatis.</p>
+            </div>
+          </div>
+
+          <!-- Riwayat Absensi -->
           <div class="mt-6 sm:mt-8">
             <h3 class="text-lg sm:text-xl font-bold text-white mb-4 px-2">Riwayat Absensi</h3>
             <div id="history-list" class="bg-zinc-900/40 border border-white/5 rounded-[2rem] overflow-hidden">
@@ -213,6 +262,30 @@
             </div>
           </div>
 
+          <!-- PENGAJUAN IZIN -->
+          <div class="mt-6 sm:mt-8 border-t border-white/5 pt-6">
+            <h3 class="text-lg sm:text-xl font-bold text-white mb-4 px-2">Pengajuan Izin</h3>
+            
+            <div id="permission-trigger-container">
+              <button id="btn-add-permission" class="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white py-4 rounded-xl flex items-center justify-center gap-3 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Buat Pengajuan Izin</span>
+              </button>
+            </div>
+
+            <div id="permission-form-container" class="hidden bg-zinc-800/50 border border-zinc-700 rounded-2xl p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-zinc-400 mb-2">Alasan Izin</label>
+                <textarea id="input-reason" class="input-reason" placeholder="Contoh: Sakit, Acara Keluarga, dll."></textarea>
+              </div>
+              <div class="flex gap-3">
+                <button id="btn-cancel-permission" class="flex-1 bg-transparent hover:bg-zinc-700 text-zinc-300 font-bold py-3 rounded-xl transition-colors border border-zinc-600">Batal</button>
+                <button id="btn-send-permission" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors">Kirim Pengajuan</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Logout Mobile -->
           <div class="mt-8 pb-4 px-4 lg:hidden">
              <button id="btn-logout-mobile" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-600/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -297,10 +370,16 @@
     </div>
   </div>
 
+  <!-- Image Preview Modal -->
+  <div id="image-modal" class="modal-image-container" onclick="this.classList.remove('active')">
+    <img id="modal-img-preview" src="" alt="Preview">
+    <p class="text-white mt-4 text-sm font-bold">Tap untuk menutup</p>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, query, where, orderBy, limit, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // --- CONFIG ---
     const firebaseConfig = {
@@ -329,6 +408,7 @@
     let hasCameraPermission = true;
     let currentAttendanceStatus = { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false };
     let tempAvatarFile = null;
+    let attendanceHistory = []; 
 
     // --- DOM ---
     const loginScreen = document.getElementById('login-screen');
@@ -385,7 +465,21 @@
     const sidebarTabProfile = document.getElementById('sidebar-tab-profile');
     const mobileTabAbsensi = document.getElementById('mobile-tab-absensi');
     const mobileTabProfile = document.getElementById('mobile-tab-profile');
-    const mobileNavPill = document.getElementById('mobile-nav-pill');
+
+    // Stats Elements
+    const statHadir = document.getElementById('stat-hadir');
+    const statTelat = document.getElementById('stat-telat');
+    const statIzin = document.getElementById('stat-izin');
+    const statAlpha = document.getElementById('stat-alpha');
+    const alphaWarningBanner = document.getElementById('alpha-warning-banner');
+
+    // Permission Elements
+    const btnAddPermission = document.getElementById('btn-add-permission');
+    const permissionTriggerContainer = document.getElementById('permission-trigger-container');
+    const permissionFormContainer = document.getElementById('permission-form-container');
+    const btnCancelPermission = document.getElementById('btn-cancel-permission');
+    const btnSendPermission = document.getElementById('btn-send-permission');
+    const inputReason = document.getElementById('input-reason');
 
     const customModal = document.getElementById('custom-modal');
     const modalTitle = document.getElementById('modal-title');
@@ -407,7 +501,7 @@
       }
     }
 
-    // --- FUNGSI AMBIL DATA PROFIL (FIXED: Use setDoc for new users) ---
+    // --- FUNGSI AMBIL DATA PROFIL ---
     async function fetchUserProfile() {
       if (!currentUser) return;
       try {
@@ -417,15 +511,13 @@
         if (userDoc.exists()) {
           userProfile = userDoc.data();
         } else {
-          // FIX: Gunakan setDoc untuk membuat dokumen baru, bukan updateDoc
           const newProfile = {
             uid: currentUser.uid,
             name: currentUser.displayName || "Karyawan",
             email: currentUser.email,
             job: "Capster",
             branch: "Cabang Parung Panjang",
-            avatarUrl: currentUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.uid}`,
-            createdAt: new Date() // Tambah timestamp creation
+            avatarUrl: currentUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.uid}`
           };
           await setDoc(userDocRef, newProfile);
           userProfile = newProfile;
@@ -439,22 +531,15 @@
 
     // --- AUTH STATE LISTENER ---
     onAuthStateChanged(auth, (user) => {
-      console.log("Auth State:", user ? "Logged In" : "Logged Out");
-
       if (user) {
         currentUser = user;
-        
-        // 1. PINDAH UI SEKARANG
         loginScreen.style.opacity = '0';
         setTimeout(() => {
           loginScreen.classList.add('hidden');
           mainApp.classList.remove('hidden');
           switchTab('absensi');
         }, 500);
-
-        // 2. Ambil Data di Background
         fetchUserProfile();
-
       } else {
         currentUser = null;
         userProfile = null;
@@ -473,66 +558,195 @@
       sidebarAvatar.src = avatar;
       editAvatarPreview.src = avatar;
       
-      const name = userProfile.name;
-      const job = userProfile.job;
-      const branch = userProfile.branch;
-
-      profileUserName.textContent = name;
-      desktopUserName.textContent = name;
-      profileJobTitle.textContent = job;
-      desktopUserJob.textContent = job;
+      profileUserName.textContent = userProfile.name;
+      desktopUserName.textContent = userProfile.name;
+      profileJobTitle.textContent = userProfile.job;
+      desktopUserJob.textContent = userProfile.job;
       
       profileBranch.innerHTML = `
         <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${branch}
+        ${userProfile.branch}
       `;
-      loadHistoryFromFirestore();
     }
 
-    // --- LOAD HISTORY ---
+    // --- LOGIC ALPHA & STATS ---
+    function checkAlphaStatusAndRenderStats() {
+      let hadir = 0, telat = 0, izin = 0;
+      const last30Days = new Set();
+      const today = new Date();
+      
+      // Generate last 30 days keys (YYYY-MM-DD) to check for alpha
+      for(let i=0; i<30; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() - i);
+        last30Days.add(d.toISOString().split('T')[0]);
+      }
+
+      attendanceHistory.forEach(rec => {
+        const dateKey = rec.dateKey;
+        
+        if (last30Days.has(dateKey)) {
+          last30Days.delete(dateKey); // This day is covered by attendance
+        }
+
+        if (rec.type === 'IZIN') {
+          izin++;
+        } else {
+          if (rec.status === 'TERLAMBAT') telat++;
+          else hadir++;
+        }
+      });
+
+      // Remaining days in last30Days are ALPHAs
+      let alpha = last30Days.size;
+
+      // Update DOM
+      statHadir.innerText = hadir;
+      statTelat.innerText = telat;
+      statIzin.innerText = izin;
+      statAlpha.innerText = alpha;
+
+      // Real-time Alpha Warning (24h Logic)
+      const todayKey = new Date().toISOString().split('T')[0];
+      const currentHour = new Date().getHours();
+      
+      if (last30Days.has(todayKey) && currentHour >= 10) {
+        alphaWarningBanner.classList.remove('hidden');
+      } else {
+        alphaWarningBanner.classList.add('hidden');
+      }
+    }
+
+    // --- LOAD HISTORY (FIXED) ---
     async function loadHistoryFromFirestore() {
-      if (!currentUser) return;
-      historyList.innerHTML = `<div class="p-8 text-center text-zinc-500 flex flex-col items-center gap-2"><div class="loader"></div><span>Memuat riwayat...</span></div>`;
+      if (!currentUser || !userProfile) return;
+      
+      historyList.innerHTML = `
+        <div class="p-8 text-center text-zinc-500 flex flex-col items-center gap-2">
+          <div class="loader"></div><span>Memuat riwayat...</span>
+        </div>`;
       
       try {
+        // 1. Query Attendance
+        // MEMBUTUHKAN INDEX: Collection 'attendance', Fields: 'uid' (Ascending), 'timestamp' (Descending)
         const q = query(
           collection(db, "attendance"),
           where("uid", "==", currentUser.uid),
           orderBy("timestamp", "desc"),
-          limit(10)
+          limit(30)
         );
         const querySnapshot = await getDocs(q);
+        
+        // 2. Query Leaves (Izin)
+        // MEMBUTUHKAN INDEX: Collection 'leave_requests', Fields: 'uid' (Ascending), 'createdAt' (Descending)
+        const qLeave = query(
+          collection(db, "leave_requests"),
+          where("uid", "==", currentUser.uid),
+          orderBy("createdAt", "desc")
+        );
+        const leaveSnapshot = await getDocs(qLeave);
+
+        let records = [];
+
+        // Process Attendance
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const dateObj = data.timestamp.toDate ? data.timestamp.toDate() : new Date();
+          records.push({
+            type: 'ABSENSI',
+            dateObj: dateObj,
+            status: data.status,
+            location: data.location,
+            photoUrl: data.photoUrl,
+            shift: data.type // MASUK / PULANG
+          });
+        });
+
+        // Process Leaves
+        leaveSnapshot.forEach((docSnap) => {
+           const data = docSnap.data();
+           const dateObj = data.createdAt.toDate ? data.createdAt.toDate() : new Date();
+           records.push({
+             type: 'IZIN',
+             dateObj: dateObj,
+             status: 'IZIN',
+             reason: data.reason,
+             photoUrl: null
+           });
+        });
+
+        // Sort all combined records by date descending
+        records.sort((a, b) => b.dateObj - a.dateObj);
+        
+        attendanceHistory = records; // Store for stats calculation
+        checkAlphaStatusAndRenderStats();
+
+        // Render HTML
         historyList.innerHTML = '';
         
-        if (querySnapshot.empty) {
+        if (records.length === 0) {
           historyList.innerHTML = '<div class="p-8 text-center text-zinc-500">Belum ada riwayat absensi.</div>';
           return;
         }
 
-        querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          let dateObj = new Date(); 
-          if(data.timestamp && typeof data.timestamp.toDate === 'function') dateObj = data.timestamp.toDate();
-          const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-          const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-          let statusColor = "text-green-400"; let statusBg = "bg-green-500/20";
-          if(data.status === 'TERLAMBAT') { statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20"; }
-          if(data.type === 'PULANG') { statusColor = "text-blue-400"; statusBg = "bg-blue-500/20"; }
+        records.forEach((rec) => {
+          const timeStr = rec.dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          const dateStr = rec.dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+          
+          // Tambahkan dateKey untuk kalkulasi stats
+          rec.dateKey = rec.dateObj.toISOString().split('T')[0];
+          
+          let statusColor = "text-green-400"; 
+          let statusBg = "bg-green-500/20";
+          let icon = `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`; // Check
+
+          if(rec.status === 'TERLAMBAT') { 
+            statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20"; 
+            icon = `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`; // Clock
+          } 
+          else if (rec.type === 'IZIN') { 
+            statusColor = "text-blue-400"; statusBg = "bg-blue-500/20";
+            icon = `<svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`; // File
+          }
+          else if (rec.shift === 'PULANG') {
+             statusColor = "text-zinc-300"; statusBg = "bg-zinc-500/20";
+          }
+
+          // Determine Content (Photo or Reason)
+          let mediaContent = '';
+          if (rec.photoUrl) {
+            mediaContent = `<img src="${rec.photoUrl}" onclick="window.viewImage('${rec.photoUrl}')" class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover cursor-pointer border border-white/10 hover:border-white/40 transition-colors" alt="Bukti">`;
+          } else if (rec.reason) {
+             mediaContent = `<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs text-center p-1 border border-white/10">IZIN</div>`;
+          } else {
+             mediaContent = `<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs text-center p-1">No IMG</div>`;
+          }
 
           const html = `
-            <div class="p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-800/30 transition-colors border-b border-white/5 last:border-0">
-              <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center ${statusBg} ${statusColor} flex-shrink-0">
-                  <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div class="p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-800/30 transition-colors border-b border-white/5 last:border-0 gap-4">
+              <!-- Media / Thumbnail -->
+              <div class="flex-shrink-0">
+                ${mediaContent}
+              </div>
+
+              <!-- Info -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                   <div class="p-1.5 rounded-md ${statusBg} ${statusColor}">
+                      ${icon}
+                   </div>
+                   <span class="font-bold text-white text-sm sm:text-base truncate">${rec.shift || rec.type}</span>
+                   <span class="text-[10px] sm:text-xs text-zinc-500 truncate">${rec.location || '-'}</span>
                 </div>
-                <div class="min-w-0">
-                  <p class="font-bold text-white text-base sm:text-lg truncate">${timeStr}</p>
-                  <p class="text-xs sm:text-sm text-zinc-400 truncate">${dateStr}</p>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                    <p class="text-xs sm:text-sm font-bold text-zinc-300">${timeStr}</p>
+                    <p class="text-xs text-zinc-500">${dateStr}</p>
                 </div>
               </div>
-              <div class="text-right ml-2 flex-shrink-0">
-                <span class="inline-block px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold mb-1 ${statusBg} ${statusColor}">${data.status}</span>
-                <p class="text-[10px] sm:text-xs text-zinc-500 flex items-center justify-end gap-1 truncate max-w-[100px]">${data.location || "Lokasi"}</p>
+
+              <!-- Status Badge -->
+              <div class="text-right flex-shrink-0">
+                <span class="inline-block px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold ${statusBg} ${statusColor}">${rec.status}</span>
               </div>
             </div>
           `;
@@ -540,11 +754,52 @@
         });
 
       } catch (error) {
-        console.error("Firestore Error:", error);
-        let errorMessage = "Gagal memuat data.";
-        if(error.code === 'permission-denied') errorMessage = "Izin database ditolak.";
-        historyList.innerHTML = `<div class="p-6 text-center"><p class="text-red-400 font-bold mb-1">Error</p><p class="text-sm text-zinc-500">${errorMessage}</p></div>`;
+        console.error("Firestore History Error:", error);
+        
+        // Penanganan Khusus untuk Error Index
+        if (error.code === 'failed-precondition') {
+            historyList.innerHTML = `
+                <div class="p-8 text-center flex flex-col items-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mb-2">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+                    </div>
+                    <h4 class="text-white font-bold">Setup Database Diperlukan</h4>
+                    <p class="text-sm text-zinc-400 max-w-xs leading-relaxed">
+                        Firebase membutuhkan <b>Index</b> khusus untuk memuat riwayat gabungan.
+                    </p>
+                    
+                    <div class="bg-zinc-800 p-4 rounded-xl text-left w-full max-w-sm border border-zinc-700">
+                        <p class="text-xs text-zinc-400 font-bold mb-2">LANGKAH PERBAIKAN:</p>
+                        <ol class="text-xs text-zinc-300 list-decimal pl-4 space-y-2">
+                            <li>Buka <b>Firebase Console</b>.</li>
+                            <li>Pilih menu <b>Firestore Database</b> > <b>Indexes</b>.</li>
+                            <li>Klik <b>Add Index</b> (Tambah Indeks).</li>
+                            <li>
+                                Collection ID: <span class="text-red-400 font-mono">attendance</span><br>
+                                Fields: <br>
+                                - <b>uid</b> (Ascending)<br>
+                                - <b>timestamp</b> (Descending)
+                            </li>
+                        </ol>
+                    </div>
+                    
+                    <button onclick="window.open('https://console.firebase.google.com/project/barbermark-80fd4/firestore/indexes', '_blank')" class="text-sm text-red-400 underline hover:text-red-300 mt-2">
+                        Buka Firebase Console Sekarang
+                    </button>
+                    
+                    <p class="text-xs text-zinc-600 mt-2">Error Detail: ${error.message.substring(0, 60)}...</p>
+                </div>
+            `;
+        } else {
+            // Error lain
+            historyList.innerHTML = `<div class="p-6 text-center"><p class="text-red-400 font-bold mb-1">Error</p><p class="text-sm text-zinc-500">${error.message}</p></div>`;
+        }
       }
+    }
+    
+    window.viewImage = (url) => {
+      document.getElementById('modal-img-preview').src = url;
+      document.getElementById('image-modal').classList.add('active');
     }
 
     // --- CLOCK & SHIFT ---
@@ -552,12 +807,13 @@
       const now = new Date();
       const h = now.getHours();
       const m = now.getMinutes();
+      
       if (h >= 10 && h < 22) {
         if (h === 10 && m > 15) return { type: 'MASUK', status: 'TERLAMBAT', isLate: true, color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', btnColor: 'bg-yellow-500', btnShadow: 'shadow-yellow-500/25' };
         else if (h > 10) return { type: 'MASUK', status: 'TERLAMBAT', isLate: true, color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', btnColor: 'bg-yellow-500', btnShadow: 'shadow-yellow-500/25' };
         else return { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false, color: 'text-green-400', bg: 'bg-green-500/20', border: 'border-green-500/50', btnColor: 'bg-red-500', btnShadow: 'shadow-red-500/25' };
       } else {
-        return { type: 'PULANG', status: 'TEPAT WAKTU', isLate: false, color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/50', btnColor: 'bg-blue-500', btnShadow: 'shadow-blue-500/25' };
+        return { type: 'PULANG', status: 'SELESAI', isLate: false, color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/50', btnColor: 'bg-blue-500', btnShadow: 'shadow-blue-500/25' };
       }
     }
 
@@ -578,11 +834,13 @@
       liveTime.textContent = timeStr;
       liveDate.textContent = dateStr;
       updateStatusUI();
+      
       let greet = "SELAMAT PAGI";
       if (h >= 4 && h < 11) greet = "SELAMAT PAGI";
       else if (h >= 11 && h < 15) greet = "SELAMAT SIANG";
       else if (h >= 15 && h < 18) greet = "SELAMAT SORE";
       else greet = "SELAMAT MALAM";
+      
       if(profileGreeting.textContent !== greet) profileGreeting.textContent = greet;
     }
     setInterval(updateClock, 1000);
@@ -677,14 +935,23 @@
       ctx.fillStyle = 'white'; ctx.textAlign = 'right'; ctx.font = '900 48px "Plus Jakarta Sans", sans-serif';
       ctx.fillText("BARBERMARK", 1220, 660);
 
-      const dUrl = watermarkCanvas.toDataURL('image/jpeg', 0.9);
-      capturedResult.src = dUrl;
+      capturedResult.src = watermarkCanvas.toDataURL('image/jpeg', 0.9);
       capturedResult.classList.remove('hidden');
       videoFeed.classList.add('hidden');
       liveOverlay.classList.add('hidden');
       containerBtnCapture.classList.add('hidden');
       containerBtnSubmit.classList.remove('hidden');
       if(currentStream) currentStream.getTracks().forEach(t => t.stop());
+    }
+
+    // Fungsi Reset UI setelah submit
+    function resetCameraUI() {
+      capturedResult.classList.add('hidden');
+      videoFeed.classList.remove('hidden');
+      liveOverlay.classList.remove('hidden');
+      containerBtnCapture.classList.remove('hidden');
+      containerBtnSubmit.classList.add('hidden');
+      initCamera();
     }
 
     btnSubmit.addEventListener('click', async () => {
@@ -694,25 +961,35 @@
       submitSpinner.classList.remove('hidden');
 
       try {
-        const blob = await new Promise(resolve => watermarkCanvas.toBlob(resolve, 'image/jpeg', 0.8));
+        // 1. Convert Canvas to Blob
+        const blob = await new Promise(resolve => watermarkCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+        
+        // 2. Upload to Cloudinary
         const photoUrl = await uploadImageToCloudinary(blob);
 
+        // 3. Save to Firestore
         await addDoc(collection(db, "attendance"), {
           uid: currentUser.uid,
-          userName: userProfile.name,
-          timestamp: new Date(),
-          type: currentAttendanceStatus.type,
-          status: currentAttendanceStatus.status,
+          name: userProfile.name,
+          job: userProfile.job,
+          branch: userProfile.branch,
+          timestamp: Timestamp.now(),
+          type: currentAttendanceStatus.type, // MASUK or PULANG
+          status: currentAttendanceStatus.status, // TEPAT WAKTU, TERLAMBAT
           location: locationString,
           photoUrl: photoUrl
         });
 
-        showNotification("Berhasil", "Absensi berhasil disimpan.", true);
-        resetCameraFeed();
+        // 4. Show Success Modal
+        showModal("Berhasil", `Absensi ${currentAttendanceStatus.type} berhasil dikirim!`, "success");
+        
+        // 5. Reload History & Reset
+        loadHistoryFromFirestore();
+        resetCameraUI();
 
       } catch (error) {
-        console.error(error);
-        showNotification("Gagal", "Terjadi kesalahan saat menyimpan data.", false);
+        console.error("Submit Error:", error);
+        showModal("Gagal", error.message || "Terjadi kesalahan saat mengirim data.", "error");
       } finally {
         btnSubmit.disabled = false;
         btnRetake.disabled = false;
@@ -721,192 +998,222 @@
       }
     });
 
-    function resetCameraFeed() {
+    // Event Listener Capture & Retake
+    btnCapture.addEventListener('click', capturePhoto);
+    
+    btnRetake.addEventListener('click', () => {
       capturedResult.classList.add('hidden');
+      videoFeed.classList.remove('hidden');
       liveOverlay.classList.remove('hidden');
       containerBtnCapture.classList.remove('hidden');
       containerBtnSubmit.classList.add('hidden');
       initCamera();
-    }
-    btnCapture.addEventListener('click', capturePhoto);
-    btnRetake.addEventListener('click', resetCameraFeed);
-
-
-    // --- EDIT PROFILE ---
-    function openEditProfile() {
-      if(!userProfile) return;
-      inputName.value = userProfile.name;
-      inputJob.value = userProfile.job;
-      inputBranch.value = userProfile.branch;
-      editAvatarPreview.src = userProfile.avatarUrl;
-      tempAvatarFile = null;
-      switchTab('edit-profile');
-    }
-
-    const btnChangeAvatar = document.getElementById('btn-change-avatar');
-    btnChangeAvatar.addEventListener('click', () => inputFileAvatar.click());
-    inputFileAvatar.addEventListener('change', (e) => {
-      if(e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        const url = URL.createObjectURL(file);
-        editAvatarPreview.src = url;
-        tempAvatarFile = file;
-      }
     });
 
-    async function saveProfileLogic() {
-      if(!currentUser) return;
+    // --- HELPER FUNCTIONS (MODAL, ETC) ---
+    function showModal(title, desc, type = 'success') {
+      modalTitle.textContent = title;
+      modalDesc.textContent = desc;
       
-      // Cek profil ada sebelum update (Defensive Coding)
-      if(!userProfile) {
-        showNotification("Error", "Data profil tidak dimuat, silakan refresh.", false);
-        return;
+      const container = document.getElementById('modal-icon-container');
+      if(type === 'success') {
+        container.className = "w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4";
+        container.innerHTML = `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+      } else {
+        container.className = "w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4";
+        container.innerHTML = `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
       }
 
-      btnSubmit.disabled = true;
-      submitSpinner.classList.remove('hidden');
+      customModal.classList.remove('hidden');
+      // Trigger reflow
+      void customModal.offsetWidth;
+      customModal.classList.remove('opacity-0');
+      customModal.querySelector('div').classList.remove('scale-95');
+      customModal.querySelector('div').classList.add('scale-100');
+    }
 
-      try {
-        let newAvatarUrl = userProfile.avatarUrl;
-        if(tempAvatarFile) {
-          newAvatarUrl = await uploadImageToCloudinary(tempAvatarFile);
-        }
+    modalBtnClose.addEventListener('click', () => {
+      customModal.classList.add('opacity-0');
+      customModal.querySelector('div').classList.remove('scale-100');
+      customModal.querySelector('div').classList.add('scale-95');
+      setTimeout(() => {
+        customModal.classList.add('hidden');
+      }, 300);
+    });
 
-        const userRef = doc(db, "users", currentUser.uid);
+    // --- NAVIGATION LOGIC ---
+    function switchTab(tabName) {
+      if (tabName === 'absensi') {
+        viewAbsensi.classList.remove('hidden');
+        viewProfile.classList.add('hidden');
+        viewEditProfile.classList.add('hidden');
         
-        // Gunakan updateDoc karena kita yakin dokumen sudah ada (dibuat saat login)
-        await updateDoc(userRef, {
-          name: inputName.value,
-          job: inputJob.value,
-          branch: inputBranch.value,
-          avatarUrl: newAvatarUrl
-        });
-
-        // Update Local State
-        userProfile.name = inputName.value;
-        userProfile.job = inputJob.value;
-        userProfile.branch = inputBranch.value;
-        userProfile.avatarUrl = newAvatarUrl;
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-
-        updateProfileUI();
-        switchTab('profile');
-        showNotification("Tersimpan", "Profil berhasil diperbarui.", true);
-
-      } catch (error) {
-        console.error(error);
-        showNotification("Gagal", "Gagal menyimpan profil.", false);
-      } finally {
-        submitSpinner.classList.add('hidden');
-        btnSubmit.disabled = false;
-      }
-    }
-    
-    document.getElementById('btn-save-profile').addEventListener('click', saveProfileLogic);
-    document.getElementById('btn-save-profile-mobile').addEventListener('click', saveProfileLogic);
-    document.getElementById('btn-edit-profile-trigger').addEventListener('click', openEditProfile);
-    document.getElementById('btn-edit-profile-small').addEventListener('click', openEditProfile);
-    document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
-
-
-    // --- TABS ---
-    function switchTab(tabId) {
-      viewAbsensi.classList.add('hidden');
-      viewAbsensi.classList.remove('flex');
-      viewProfile.classList.add('hidden');
-      viewEditProfile.classList.add('hidden');
-
-      sidebarTabAbsensi.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white";
-      sidebarTabProfile.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white";
-      mobileTabAbsensi.className = "text-sm font-bold transition-colors text-zinc-400 hover:text-white";
-      mobileTabProfile.className = "text-sm font-bold transition-colors text-zinc-400 hover:text-white";
-
-      if (tabId === 'absensi') {
-        viewAbsensi.classList.remove('hidden'); viewAbsensi.classList.add('flex');
-        sidebarTabAbsensi.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25";
-        mobileTabAbsensi.className = "text-sm font-bold transition-colors text-red-500";
-        mobileNavPill.classList.remove('opacity-0', 'pointer-events-none');
+        sidebarTabAbsensi.classList.add('bg-red-500', 'text-white', 'shadow-lg', 'shadow-red-500/25');
+        sidebarTabAbsensi.classList.remove('text-zinc-400', 'hover:bg-zinc-800/50');
+        sidebarTabProfile.classList.remove('bg-red-500', 'text-white', 'shadow-lg', 'shadow-red-500/25');
+        sidebarTabProfile.classList.add('text-zinc-400', 'hover:bg-zinc-800/50');
+        
+        mobileTabAbsensi.classList.add('text-red-500');
+        mobileTabAbsensi.classList.remove('text-zinc-400');
+        mobileTabProfile.classList.remove('text-red-500');
+        mobileTabProfile.classList.add('text-zinc-400');
+        
         initCamera();
-      } else if (tabId === 'profile') {
+      } else if (tabName === 'profile') {
+        viewAbsensi.classList.add('hidden');
         viewProfile.classList.remove('hidden');
-        sidebarTabProfile.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25";
-        mobileTabProfile.className = "text-sm font-bold transition-colors text-red-500";
-        mobileNavPill.classList.remove('opacity-0', 'pointer-events-none');
+        viewEditProfile.classList.add('hidden');
+        
+        sidebarTabProfile.classList.add('bg-red-500', 'text-white', 'shadow-lg', 'shadow-red-500/25');
+        sidebarTabProfile.classList.remove('text-zinc-400', 'hover:bg-zinc-800/50');
+        sidebarTabAbsensi.classList.remove('bg-red-500', 'text-white', 'shadow-lg', 'shadow-red-500/25');
+        sidebarTabAbsensi.classList.add('text-zinc-400', 'hover:bg-zinc-800/50');
+        
+        mobileTabProfile.classList.add('text-red-500');
+        mobileTabProfile.classList.remove('text-zinc-400');
+        mobileTabAbsensi.classList.remove('text-red-500');
+        mobileTabAbsensi.classList.add('text-zinc-400');
+
+        // Stop camera when not in use
         if(currentStream) currentStream.getTracks().forEach(t => t.stop());
-      } else if (tabId === 'edit-profile') {
+        
+        // Load history here to ensure fresh data
+        loadHistoryFromFirestore();
+      } else if (tabName === 'edit-profile') {
+        viewProfile.classList.add('hidden');
         viewEditProfile.classList.remove('hidden');
-        sidebarTabProfile.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-zinc-800 text-white shadow-lg";
-        mobileTabProfile.className = "text-sm font-bold transition-colors text-zinc-300";
-        mobileNavPill.classList.add('opacity-0', 'pointer-events-none');
-        if(currentStream) currentStream.getTracks().forEach(t => t.stop());
+        // Pre-fill edit form
+        inputName.value = userProfile.name;
+        inputJob.value = userProfile.job;
+        inputBranch.value = userProfile.branch;
+        editAvatarPreview.src = userProfile.avatarUrl;
       }
     }
 
+    // Attach Sidebar Events
     sidebarTabAbsensi.addEventListener('click', () => switchTab('absensi'));
     sidebarTabProfile.addEventListener('click', () => switchTab('profile'));
     mobileTabAbsensi.addEventListener('click', () => switchTab('absensi'));
     mobileTabProfile.addEventListener('click', () => switchTab('profile'));
 
-    // --- AUTH HANDLERS ---
-    btnGoogleLogin.addEventListener('click', async () => {
-      const provider = new GoogleAuthProvider();
-      loginText.textContent = "Menghubungkan...";
-      btnGoogleLogin.disabled = true;
-      loginErrorMsg.classList.add('hidden');
-      
-      try {
-        const result = await signInWithPopup(auth, provider);
-      } catch (error) {
-        console.error("Login Error:", error);
-        loginText.textContent = "Login Gagal";
-        btnGoogleLogin.disabled = false;
-        let msg = "Terjadi kesalahan.";
-        if (error.code === 'auth/popup-blocked') msg = "Popup diblokir browser.";
-        else if (error.code === 'auth/unauthorized-domain') msg = "Domain tidak diizinkan di Firebase.";
-        else if (error.code === 'auth/cancelled-popup-request') {
-            msg = "Login dibatalkan.";
-            loginText.textContent = "Login dengan Google";
-        }
-        if (error.code !== 'auth/cancelled-popup-request') {
-            loginErrorMsg.textContent = msg;
-            loginErrorMsg.classList.remove('hidden');
-        }
+    // --- PROFILE EDIT LOGIC ---
+    document.getElementById('btn-edit-profile-trigger').addEventListener('click', () => switchTab('edit-profile'));
+    document.getElementById('btn-edit-profile-small').addEventListener('click', () => switchTab('edit-profile'));
+    document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
+    
+    document.getElementById('btn-change-avatar').addEventListener('click', () => inputFileAvatar.click());
+    
+    inputFileAvatar.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        tempAvatarFile = file;
+        editAvatarPreview.src = URL.createObjectURL(file);
       }
     });
 
-    const handleLogout = () => {
-      signOut(auth).then(() => {}).catch((error) => console.error(error));
+    const saveProfile = async () => {
+      const newName = inputName.value;
+      const newJob = inputJob.value;
+      const newBranch = inputBranch.value;
+      
+      if(!newName) return showModal('Error', 'Nama tidak boleh kosong', 'error');
+
+      try {
+        let avatarUrl = userProfile.avatarUrl;
+        
+        // Upload new avatar if changed
+        if (tempAvatarFile) {
+          avatarUrl = await uploadImageToCloudinary(tempAvatarFile);
+        }
+
+        await updateDoc(doc(db, "users", currentUser.uid), {
+          name: newName,
+          job: newJob,
+          branch: newBranch,
+          avatarUrl: avatarUrl
+        });
+
+        // Update local state
+        userProfile.name = newName;
+        userProfile.job = newJob;
+        userProfile.branch = newBranch;
+        userProfile.avatarUrl = avatarUrl;
+        localStorage.setItem('userProfile', JSON.stringify(userProfile));
+        
+        updateProfileUI();
+        switchTab('profile');
+        showModal('Sukses', 'Profil berhasil diperbarui', 'success');
+        tempAvatarFile = null;
+      } catch (err) {
+        console.error(err);
+        showModal('Error', 'Gagal menyimpan profil', 'error');
+      }
+    };
+
+    document.getElementById('btn-save-profile').addEventListener('click', saveProfile);
+    document.getElementById('btn-save-profile-mobile').addEventListener('click', saveProfile);
+
+    // --- PERMISSION (LEAVE) LOGIC ---
+    btnAddPermission.addEventListener('click', () => {
+      permissionTriggerContainer.classList.add('hidden');
+      permissionFormContainer.classList.remove('hidden');
+    });
+
+    btnCancelPermission.addEventListener('click', () => {
+      permissionFormContainer.classList.add('hidden');
+      permissionTriggerContainer.classList.remove('hidden');
+      inputReason.value = '';
+    });
+
+    btnSendPermission.addEventListener('click', async () => {
+      const reason = inputReason.value.trim();
+      if (!reason) return showModal('Error', 'Mohon isi alasan izin.', 'error');
+
+      btnSendPermission.disabled = true;
+      btnSendPermission.textContent = "Mengirim...";
+
+      try {
+        await addDoc(collection(db, "leave_requests"), {
+          uid: currentUser.uid,
+          name: userProfile.name,
+          branch: userProfile.branch,
+          reason: reason,
+          status: 'PENDING', // Or directly 'APPROVED' depending on flow
+          createdAt: Timestamp.now()
+        });
+
+        showModal('Sukses', 'Pengajuan izin terkirim.', 'success');
+        permissionFormContainer.classList.add('hidden');
+        permissionTriggerContainer.classList.remove('hidden');
+        inputReason.value = '';
+        loadHistoryFromFirestore(); // Refresh list
+      } catch (err) {
+        console.error(err);
+        showModal('Error', 'Gagal mengirim pengajuan.', 'error');
+      } finally {
+        btnSendPermission.disabled = false;
+        btnSendPermission.textContent = "Kirim Pengajuan";
+      }
+    });
+
+    // --- AUTH LOGIC ---
+    btnGoogleLogin.addEventListener('click', async () => {
+      try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        console.error("Login Error:", error);
+        loginErrorMsg.textContent = "Login gagal. Coba lagi.";
+        loginErrorMsg.classList.remove('hidden');
+      }
+    });
+
+    const handleLogout = async () => {
+      await signOut(auth);
     };
 
     document.getElementById('btn-logout-desktop').addEventListener('click', handleLogout);
     document.getElementById('btn-logout-mobile').addEventListener('click', handleLogout);
-
-
-    // --- MODAL UTILS ---
-    function showNotification(title, message, isSuccess) {
-      modalTitle.textContent = title; modalDesc.textContent = message;
-      const icon = document.getElementById('modal-icon-container');
-      icon.className = isSuccess 
-        ? "w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4"
-        : "w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4";
-      icon.innerHTML = isSuccess
-        ? `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
-        : `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
-      
-      customModal.classList.remove('hidden');
-      setTimeout(() => customModal.classList.remove('opacity-0'), 10);
-    }
-    modalBtnClose.addEventListener('click', () => {
-      customModal.classList.add('opacity-0');
-      setTimeout(() => customModal.classList.add('hidden'), 300);
-    });
-
-    // Init LocalStorage Cache
-    const cachedProfile = localStorage.getItem('userProfile');
-    if (cachedProfile && !currentUser) {
-       // userProfile = JSON.parse(cachedProfile);
-       // updateProfileUI();
-    }
 
   </script>
 </body>
