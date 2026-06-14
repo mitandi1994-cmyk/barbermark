@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Sistem Absensi Barbermark">
   
-  <!-- FAVICON (Pastikan ada file favicon.png di folder yang sama) -->
+  <!-- FAVICON -->
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
 
@@ -25,7 +25,7 @@
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       overscroll-behavior-y: none;
-      background-color: #09090b; /* zinc-950 */
+      background-color: #09090b;
     }
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -40,16 +40,12 @@
       -webkit-animation: spin 1s linear infinite;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* Custom Input Styles */
     .input-field {
       width: 100%;
-      background-color: #27272a; /* zinc-800 */
-      border: 1px solid #3f3f46; /* zinc-700 */
+      background-color: #27272a;
+      border: 1px solid #3f3f46;
       color: white;
       padding: 1rem;
       border-radius: 1rem;
@@ -58,7 +54,7 @@
       outline: none;
     }
     .input-field:focus {
-      border-color: #ef4444; /* red-500 */
+      border-color: #ef4444;
       box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
     }
   </style>
@@ -67,7 +63,6 @@
 
   <!-- 1. HALAMAN LOGIN -->
   <div id="login-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-zinc-950 transition-opacity duration-500">
-    <!-- Dekorasi -->
     <div class="absolute top-[-10%] left-[-10%] w-64 h-64 sm:w-96 sm:h-96 bg-red-600/20 blur-[100px] rounded-full"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-64 h-64 sm:w-96 sm:h-96 bg-red-600/10 blur-[100px] rounded-full"></div>
 
@@ -77,52 +72,46 @@
       </h1>
       <p class="text-zinc-400 mb-8 text-sm sm:text-base">Sistem Absensi Karyawan</p>
 
-      <!-- Tombol Login Google Asli -->
+      <!-- Tombol Login Google -->
       <button id="btn-google-login" class="w-full bg-white text-zinc-950 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-3 hover:bg-zinc-200 transition-all active:scale-[0.98] shadow-lg shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed">
         <svg class="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.58c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
         <span id="login-text">Login dengan Google</span>
       </button>
+      <p id="login-error-msg" class="text-red-500 text-xs mt-3 hidden"></p>
     </div>
   </div>
 
   <!-- 2. MAIN APP LAYOUT -->
   <div id="main-app" class="hidden h-[100dvh] w-full bg-zinc-950 text-white flex relative">
-    
-    <!-- FLOATING SIDEBAR (Desktop Only) -->
-    <div class="hidden lg:flex flex-col fixed left-4 top-4 bottom-4 w-72 bg-zinc-900/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 z-50 shadow-2xl transition-transform duration-300">
-      <div class="mb-10">
-        <h1 class="text-3xl font-black tracking-tighter">
-          BARBER<span class="text-red-500">MARK</span>
-        </h1>
-      </div>
-
+    <!-- Sidebar Desktop -->
+    <div class="hidden lg:flex flex-col fixed left-4 top-4 bottom-4 w-72 bg-zinc-900/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 z-50 shadow-2xl">
+      <div class="mb-10"><h1 class="text-3xl font-black tracking-tighter">BARBER<span class="text-red-500">MARK</span></h1></div>
       <nav class="flex-1 space-y-2">
         <button id="sidebar-tab-absensi" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
           <span class="font-semibold">Absensi Kamera</span>
         </button>
         <button id="sidebar-tab-profile" class="w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <span class="font-semibold">Profile Saya</span>
         </button>
       </nav>
-
       <div class="mt-auto pt-6 border-t border-white/10">
         <div class="flex items-center gap-3 mb-4">
-          <img id="sidebar-avatar" src="" alt="User Avatar" class="w-10 h-10 rounded-full bg-zinc-800" />
+          <img id="sidebar-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full bg-zinc-800" />
           <div class="overflow-hidden">
             <p id="desktop-user-name" class="font-bold truncate">Loading...</p>
             <p id="desktop-user-job" class="text-xs text-zinc-400">Loading...</p>
           </div>
         </div>
         <button id="btn-logout-desktop" class="w-full flex items-center justify-center gap-2 py-2 px-4 bg-zinc-800 hover:bg-red-500/20 hover:text-red-500 rounded-lg transition-colors text-sm font-semibold">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Logout
         </button>
       </div>
     </div>
 
-    <!-- MOBILE NAVIGATION PILL -->
+    <!-- Mobile Nav -->
     <div id="mobile-nav-pill" class="lg:hidden fixed top-4 left-4 right-4 z-50 flex justify-center pointer-events-none">
       <div class="pointer-events-auto border-[1.5px] border-white/10 bg-black/60 backdrop-blur-xl rounded-full px-6 py-2.5 flex items-center justify-center gap-6 shadow-2xl">
         <button id="mobile-tab-absensi" class="text-sm font-bold transition-colors text-red-500">Absensi</button>
@@ -131,27 +120,17 @@
       </div>
     </div>
 
-    <!-- MAIN CONTENT -->
     <main class="flex-1 lg:pl-80 h-full w-full relative">
-      
-      <!-- TAB 1: VIEWPORT ABSENSI -->
+      <!-- Tab 1: Absensi -->
       <div id="view-absensi" class="w-full h-full relative bg-black flex flex-col lg:p-4 lg:rounded-[2rem] overflow-hidden">
         <div class="flex-1 w-full h-full relative lg:rounded-[2rem] overflow-hidden bg-zinc-900 flex items-center justify-center">
-          
-          <!-- Live Camera Video -->
           <video id="video-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover -scale-x-100"></video>
-
-          <!-- Fallback -->
           <div id="camera-fallback" class="hidden absolute inset-0 w-full h-full bg-zinc-950 flex flex-col items-center justify-center p-6 text-center z-10">
             <div class="w-20 h-20 rounded-full bg-zinc-900 border-2 border-red-500/50 flex items-center justify-center mb-4 animate-pulse"><span class="text-3xl">💈</span></div>
-            <h3 class="text-lg font-bold mb-1 text-red-500">Kamera Tidak Terdeteksi</h3>
-            <p class="text-xs text-zinc-500 max-w-xs mb-6">Pastikan izin kamera diberikan.</p>
+            <h3 class="text-lg font-bold mb-1 text-red-500">Kamera Error</h3>
           </div>
-
-          <!-- Captured Result -->
-          <img id="captured-result" alt="Hasil Foto" class="hidden absolute inset-0 w-full h-full object-cover z-20" />
-
-          <!-- LIVE WATERMARK OVERLAY -->
+          <img id="captured-result" alt="Hasil" class="hidden absolute inset-0 w-full h-full object-cover z-20" />
+          
           <div id="live-overlay" class="absolute inset-0 pointer-events-none p-4 sm:p-6 flex flex-col justify-between z-10 pt-20 sm:pt-6">
             <div class="flex-1 flex flex-col justify-center drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] w-full max-w-lg">
               <div id="status-badge-container" class="inline-flex items-center gap-2 mb-3 w-max">
@@ -170,14 +149,12 @@
             </div>
           </div>
 
-          <!-- ACTION BUTTON: JEPRET -->
           <div id="container-btn-capture" class="absolute bottom-8 sm:bottom-10 left-0 right-0 flex justify-center z-20">
             <button id="btn-capture" class="w-16 h-16 sm:w-20 sm:h-20 bg-red-500 hover:bg-red-600 rounded-full border-4 border-white/25 flex items-center justify-center transition-all duration-300 active:scale-95 shadow-2xl shadow-red-500/20">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5z"/></svg>
+              <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5z"/></svg>
             </button>
           </div>
 
-          <!-- ACTION BUTTONS 2: SUBMIT / RETAKE -->
           <div id="container-btn-submit" class="hidden absolute inset-0 bg-black/60 flex flex-col items-center justify-end pb-16 px-6 z-30 backdrop-blur-sm">
             <div class="w-full max-w-sm flex gap-4">
               <button id="btn-retake" class="flex-1 bg-zinc-800/80 backdrop-blur text-white py-4 rounded-2xl font-bold hover:bg-zinc-700 transition-colors active:scale-95 border border-white/10">Ulangi</button>
@@ -187,46 +164,42 @@
               </button>
             </div>
           </div>
-
         </div>
         <canvas id="watermark-canvas" class="hidden"></canvas>
       </div>
 
-      <!-- TAB 2: VIEWPORT PROFILE -->
+      <!-- Tab 2: Profile -->
       <div id="view-profile" class="hidden w-full h-full lg:p-4 pb-24 overflow-y-auto no-scrollbar bg-zinc-950">
         <div class="max-w-3xl mx-auto pt-20 lg:pt-0 px-4 pb-8">
-          
           <!-- Profile Card -->
           <div class="bg-zinc-900/50 border border-white/5 rounded-[2rem] p-6 sm:p-8 backdrop-blur-md text-center sm:text-left flex flex-col sm:flex-row items-center gap-6 sm:gap-8 shadow-xl relative overflow-hidden">
             <div class="relative flex-shrink-0 group cursor-pointer" id="btn-edit-profile-trigger">
               <div class="w-28 h-28 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 p-1 transition-transform group-hover:scale-105">
                 <img id="profile-avatar-display" src="" alt="Avatar" class="w-full h-full rounded-full border-4 border-zinc-900 object-cover bg-zinc-800" />
               </div>
-              <div class="absolute bottom-0 right-0 bg-green-500 w-6 h-6 rounded-full border-4 border-zinc-900"></div>
               <div class="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
               </div>
             </div>
-
             <div class="flex-1 w-full text-center sm:text-left z-10">
               <div class="flex items-center justify-center sm:justify-start gap-2 mb-1">
                 <p id="profile-greeting" class="text-sm font-bold text-red-400">SELAMAT PAGI</p>
                 <button id="btn-edit-profile-small" class="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                 </button>
               </div>
               <h2 id="profile-user-name" class="text-2xl sm:text-3xl font-black text-white mb-1 break-words">Loading...</h2>
               <p id="profile-job-title" class="text-zinc-400 font-medium mb-4">Loading...</p>
               <div class="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3">
                 <span id="profile-branch" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 text-sm font-medium text-zinc-300 border border-white/5">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   Loading...
                 </span>
               </div>
             </div>
           </div>
 
-          <!-- Statistics Grid -->
+          <!-- Stats -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
             <div class="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 sm:p-5 text-center">
               <p class="text-zinc-400 text-xs sm:text-sm font-medium mb-1">Hadir</p>
@@ -246,27 +219,28 @@
             </div>
           </div>
 
-          <!-- Riwayat Absensi -->
+          <!-- Riwayat -->
           <div class="mt-6 sm:mt-8">
             <h3 class="text-lg sm:text-xl font-bold text-white mb-4 px-2">Riwayat Absensi</h3>
             <div id="history-list" class="bg-zinc-900/40 border border-white/5 rounded-[2rem] overflow-hidden">
-               <!-- History items akan di-load via Firestore -->
-               <div class="p-8 text-center text-zinc-500">Memuat riwayat...</div>
+               <div class="p-8 text-center text-zinc-500 flex flex-col items-center gap-2">
+                 <div class="loader"></div>
+                 <span>Memuat riwayat...</span>
+               </div>
             </div>
           </div>
 
-          <!-- TOMBOL LOGOUT MOBILE -->
+          <!-- Logout Mobile -->
           <div class="mt-8 pb-4 px-4 lg:hidden">
              <button id="btn-logout-mobile" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-600/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
-               <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                Keluar Akun
              </button>
           </div>
-
         </div>
       </div>
 
-      <!-- TAB 3: VIEWPORT EDIT PROFILE -->
+      <!-- Tab 3: Edit Profile -->
       <div id="view-edit-profile" class="hidden w-full h-full lg:p-4 pb-20 overflow-y-auto no-scrollbar bg-zinc-950">
         <div class="max-w-2xl mx-auto pt-20 lg:pt-6 px-4">
           <div class="flex items-center justify-between mb-8 sticky top-0 bg-zinc-950/95 backdrop-blur z-10 py-2">
@@ -276,25 +250,22 @@
           </div>
 
           <div class="bg-zinc-900/50 border border-white/5 rounded-[2rem] p-6 sm:p-8 backdrop-blur-md shadow-xl">
-            <!-- Avatar Section -->
             <div class="flex flex-col items-center justify-center mb-8">
               <div class="relative group cursor-pointer" id="btn-change-avatar">
                 <img id="edit-avatar-preview" src="" alt="Avatar" class="w-32 h-32 rounded-full border-4 border-zinc-800 object-cover bg-zinc-800 shadow-lg transition-transform group-hover:scale-105" />
                 <div class="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
               </div>
               <input type="file" id="input-file-avatar" accept="image/*" class="hidden">
               <p class="mt-3 text-xs text-zinc-500 font-medium">Klik untuk ubah foto</p>
             </div>
 
-            <!-- Inputs -->
             <div class="space-y-6">
               <div>
                 <label class="block text-sm font-medium text-zinc-400 mb-2">Nama Lengkap</label>
                 <input type="text" id="input-name" class="input-field" placeholder="Nama Lengkap">
               </div>
-
               <div>
                 <label class="block text-sm font-medium text-zinc-400 mb-2">Jabatan</label>
                 <select id="input-job" class="input-field appearance-none cursor-pointer">
@@ -307,7 +278,6 @@
                   <option value="CEO">CEO</option>
                 </select>
               </div>
-
               <div>
                 <label class="block text-sm font-medium text-zinc-400 mb-2">Cabang</label>
                 <select id="input-branch" class="input-field appearance-none">
@@ -333,7 +303,7 @@
     </main>
   </div>
 
-  <!-- MODALS -->
+  <!-- Modal Notifikasi -->
   <div id="custom-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity opacity-0">
     <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300">
       <div id="modal-icon-container" class="w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4">
@@ -345,14 +315,12 @@
     </div>
   </div>
 
-  <!-- MAIN LOGIC JAVASCRIPT (MODULE TYPE FOR FIREBASE) -->
   <script type="module">
-    // --- FIREBASE & CLOUDINARY IMPORTS ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, doc, getDoc, updateDoc, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // --- CONFIGURATION ---
+    // --- CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyCkZvcc0WLZtdLa8Qgk3Ey_qqeEi4g9OXQ",
       authDomain: "barbermark-80fd4.firebaseapp.com",
@@ -366,25 +334,26 @@
     const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dl6iyeqrc/image/upload";
     const CLOUDINARY_UPLOAD_PRESET = "barbermark";
 
-    // --- INITIALIZE APP ---
+    // --- INIT ---
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- GLOBAL STATE & DOM ---
+    // --- GLOBAL VARS ---
     let currentUser = null;
     let userProfile = null;
     let currentStream = null;
     let locationString = "Mencari Lokasi...";
     let hasCameraPermission = true;
     let currentAttendanceStatus = { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false };
-    let tempAvatarFile = null; // Temporary store for new avatar before upload
+    let tempAvatarFile = null;
 
-    // DOM Elements (Refactoring previous selectors)
+    // --- DOM ---
     const loginScreen = document.getElementById('login-screen');
     const mainApp = document.getElementById('main-app');
     const btnGoogleLogin = document.getElementById('btn-google-login');
     const loginText = document.getElementById('login-text');
+    const loginErrorMsg = document.getElementById('login-error-msg');
 
     const viewAbsensi = document.getElementById('view-absensi');
     const viewProfile = document.getElementById('view-profile');
@@ -414,7 +383,6 @@
 
     const watermarkCanvas = document.getElementById('watermark-canvas');
 
-    // Profile Elements
     const profileGreeting = document.getElementById('profile-greeting');
     const profileAvatarDisplay = document.getElementById('profile-avatar-display');
     const sidebarAvatar = document.getElementById('sidebar-avatar');
@@ -425,59 +393,48 @@
     const profileBranch = document.getElementById('profile-branch');
     const historyList = document.getElementById('history-list');
 
-    // Edit Profile Elements
     const editAvatarPreview = document.getElementById('edit-avatar-preview');
     const inputName = document.getElementById('input-name');
     const inputJob = document.getElementById('input-job');
     const inputBranch = document.getElementById('input-branch');
     const inputFileAvatar = document.getElementById('input-file-avatar');
 
-    // Nav Elements
     const sidebarTabAbsensi = document.getElementById('sidebar-tab-absensi');
     const sidebarTabProfile = document.getElementById('sidebar-tab-profile');
     const mobileTabAbsensi = document.getElementById('mobile-tab-absensi');
     const mobileTabProfile = document.getElementById('mobile-tab-profile');
     const mobileNavPill = document.getElementById('mobile-nav-pill');
 
-    // Modals
     const customModal = document.getElementById('custom-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalDesc = document.getElementById('modal-desc');
     const modalBtnClose = document.getElementById('modal-btn-close');
 
-    // --- HELPER FUNCTIONS ---
-
-    // 1. Cloudinary Upload Function
+    // --- CLOUDINARY UPLOAD ---
     async function uploadImageToCloudinary(file) {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
       try {
-        const response = await fetch(CLOUDINARY_URL, {
-          method: 'POST',
-          body: formData
-        });
+        const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
         const data = await response.json();
         return data.secure_url;
       } catch (error) {
-        console.error("Cloudinary Upload Error:", error);
-        throw new Error("Gagal mengupload foto");
+        console.error("Cloudinary Error:", error);
+        throw new Error("Gagal upload foto");
       }
     }
 
-    // 2. Firebase Auth State
+    // --- AUTH STATE LISTENER ---
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
-        // Cek data user di Firestore
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
           userProfile = userDoc.data();
         } else {
-          // Buat profile baru jika belum ada
           const newProfile = {
             uid: user.uid,
             name: user.displayName || "Karyawan",
@@ -489,14 +446,9 @@
           await updateDoc(userDocRef, newProfile);
           userProfile = newProfile;
         }
-
-        // Simpan ke LocalStorage untuk cache offline
         localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        
-        // Update UI
         updateProfileUI();
         
-        // Masuk ke Main App
         loginScreen.style.opacity = '0';
         setTimeout(() => {
           loginScreen.classList.add('hidden');
@@ -505,7 +457,6 @@
         }, 500);
 
       } else {
-        // Tidak ada user
         currentUser = null;
         userProfile = null;
         localStorage.removeItem('userProfile');
@@ -515,11 +466,9 @@
       }
     });
 
-    // 3. Update Profile UI
+    // --- UPDATE UI ---
     function updateProfileUI() {
       if (!userProfile) return;
-      
-      // Update semua elemen UI
       const avatar = userProfile.avatarUrl;
       profileAvatarDisplay.src = avatar;
       sidebarAvatar.src = avatar;
@@ -535,19 +484,20 @@
       desktopUserJob.textContent = job;
       
       profileBranch.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         ${branch}
       `;
-
-      // Load Riwayat
       loadHistoryFromFirestore();
     }
 
-    // 4. Load History from Firestore
+    // --- LOAD HISTORY (PERBAIKAN LOGIC) ---
     async function loadHistoryFromFirestore() {
       if (!currentUser) return;
       
-      historyList.innerHTML = '<div class="p-8 text-center text-zinc-500"><div class="loader mx-auto mb-2"></div>Memuat...</div>';
+      historyList.innerHTML = `
+        <div class="p-8 text-center text-zinc-500 flex flex-col items-center gap-2">
+          <div class="loader"></div><span>Memuat riwayat...</span>
+        </div>`;
       
       try {
         const q = query(
@@ -557,22 +507,25 @@
           limit(10)
         );
         const querySnapshot = await getDocs(q);
-        
-        historyList.innerHTML = ''; // Clear loading
+        historyList.innerHTML = '';
         
         if (querySnapshot.empty) {
           historyList.innerHTML = '<div class="p-8 text-center text-zinc-500">Belum ada riwayat absensi.</div>';
           return;
         }
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          const dateObj = data.timestamp ? data.timestamp.toDate() : new Date();
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          // Handle Timestamp safely
+          let dateObj = new Date(); 
+          if(data.timestamp && typeof data.timestamp.toDate === 'function') {
+            dateObj = data.timestamp.toDate();
+          }
+
           const timeStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
           const dateStr = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
           
-          let statusColor = "text-green-400";
-          let statusBg = "bg-green-500/20";
+          let statusColor = "text-green-400"; let statusBg = "bg-green-500/20";
           if(data.status === 'TERLAMBAT') { statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20"; }
           if(data.type === 'PULANG') { statusColor = "text-blue-400"; statusBg = "bg-blue-500/20"; }
 
@@ -589,7 +542,7 @@
               </div>
               <div class="text-right ml-2 flex-shrink-0">
                 <span class="inline-block px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold mb-1 ${statusBg} ${statusColor}">${data.status}</span>
-                <p class="text-[10px] sm:text-xs text-zinc-500 flex items-center justify-end gap-1 truncate max-w-[100px]">${data.location}</p>
+                <p class="text-[10px] sm:text-xs text-zinc-500 flex items-center justify-end gap-1 truncate max-w-[100px]">${data.location || "Lokasi"}</p>
               </div>
             </div>
           `;
@@ -597,24 +550,34 @@
         });
 
       } catch (error) {
-        console.error("Error loading history:", error);
-        historyList.innerHTML = '<div class="p-8 text-center text-red-500">Gagal memuat riwayat.</div>';
+        console.error("Firestore Error:", error);
+        // Tampilkan pesan error spesifik
+        let errorMessage = "Gagal memuat data.";
+        if(error.code === 'permission-denied') {
+          errorMessage = "Izin database ditolak. Cek Firestore Rules.";
+        } else if (error.code === 'unauthenticated') {
+          errorMessage = "Sesi habis, silakan login ulang.";
+        }
+        
+        historyList.innerHTML = `
+          <div class="p-6 text-center">
+            <p class="text-red-400 font-bold mb-1">Error</p>
+            <p class="text-sm text-zinc-500">${errorMessage}</p>
+          </div>
+        `;
       }
     }
 
-
-    // --- LOGIC: CLOCK & SHIFT ---
+    // --- CLOCK & SHIFT ---
     function calculateAttendanceStatus() {
       const now = new Date();
       const h = now.getHours();
       const m = now.getMinutes();
-
       if (h >= 10 && h < 22) {
         if (h === 10 && m > 15) return { type: 'MASUK', status: 'TERLAMBAT', isLate: true, color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', btnColor: 'bg-yellow-500', btnShadow: 'shadow-yellow-500/25' };
         else if (h > 10) return { type: 'MASUK', status: 'TERLAMBAT', isLate: true, color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', btnColor: 'bg-yellow-500', btnShadow: 'shadow-yellow-500/25' };
         else return { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false, color: 'text-green-400', bg: 'bg-green-500/20', border: 'border-green-500/50', btnColor: 'bg-red-500', btnShadow: 'shadow-red-500/25' };
-      } 
-      else {
+      } else {
         return { type: 'PULANG', status: 'TEPAT WAKTU', isLate: false, color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/50', btnColor: 'bg-blue-500', btnShadow: 'shadow-blue-500/25' };
       }
     }
@@ -636,7 +599,6 @@
       liveTime.textContent = timeStr;
       liveDate.textContent = dateStr;
       updateStatusUI();
-
       let greet = "SELAMAT PAGI";
       if (h >= 4 && h < 11) greet = "SELAMAT PAGI";
       else if (h >= 11 && h < 15) greet = "SELAMAT SIANG";
@@ -647,7 +609,7 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // --- LOGIC: LOCATION ---
+    // --- LOCATION ---
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -671,7 +633,7 @@
       );
     }
 
-    // --- LOGIC: CAMERA ---
+    // --- CAMERA ---
     async function initCamera() {
       if (currentStream) currentStream.getTracks().forEach(t => t.stop());
       try {
@@ -688,13 +650,11 @@
       }
     }
 
-    // --- LOGIC: CAPTURE & SUBMIT (TO FIREBASE) ---
+    // --- CAPTURE & SUBMIT ---
     function capturePhoto() {
       const ctx = watermarkCanvas.getContext('2d');
-      watermarkCanvas.width = 1280;
-      watermarkCanvas.height = 720;
+      watermarkCanvas.width = 1280; watermarkCanvas.height = 720;
 
-      // Draw Video (Mirrored)
       if (hasCameraPermission && videoFeed.srcObject) {
         ctx.save();
         ctx.translate(watermarkCanvas.width, 0);
@@ -707,13 +667,11 @@
         ctx.drawImage(videoFeed, sX, sY, dW, dH);
         ctx.restore();
       } else {
-        // Fallback
         ctx.fillStyle = '#09090b'; ctx.fillRect(0,0,1280,720);
         ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 10; ctx.strokeRect(40,40,1200,640);
         ctx.fillStyle = '#ef4444'; ctx.font = 'bold 80px sans-serif'; ctx.textAlign='center'; ctx.fillText("💈", 640, 390);
       }
 
-      // Watermark
       const g = ctx.createLinearGradient(0,0,0,432); g.addColorStop(0, 'rgba(0,0,0,0.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g; ctx.fillRect(0,0,1280,720);
       ctx.fillStyle = 'white'; ctx.shadowColor = 'rgba(0,0,0,1)'; ctx.shadowBlur = 8; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
@@ -750,7 +708,6 @@
       if(currentStream) currentStream.getTracks().forEach(t => t.stop());
     }
 
-    // Submit Logic (Upload -> Firestore)
     btnSubmit.addEventListener('click', async () => {
       btnSubmit.disabled = true;
       btnRetake.disabled = true;
@@ -758,13 +715,9 @@
       submitSpinner.classList.remove('hidden');
 
       try {
-        // 1. Convert Canvas to Blob
         const blob = await new Promise(resolve => watermarkCanvas.toBlob(resolve, 'image/jpeg', 0.8));
-        
-        // 2. Upload to Cloudinary
         const photoUrl = await uploadImageToCloudinary(blob);
 
-        // 3. Save to Firestore
         await addDoc(collection(db, "attendance"), {
           uid: currentUser.uid,
           userName: userProfile.name,
@@ -796,12 +749,11 @@
       containerBtnSubmit.classList.add('hidden');
       initCamera();
     }
-
     btnCapture.addEventListener('click', capturePhoto);
     btnRetake.addEventListener('click', resetCameraFeed);
 
 
-    // --- LOGIC: EDIT PROFILE ---
+    // --- EDIT PROFILE ---
     function openEditProfile() {
       if(!userProfile) return;
       inputName.value = userProfile.name;
@@ -812,7 +764,6 @@
       switchTab('edit-profile');
     }
 
-    // Handle Avatar Change (Upload to Cloudinary on save, not now)
     const btnChangeAvatar = document.getElementById('btn-change-avatar');
     btnChangeAvatar.addEventListener('click', () => inputFileAvatar.click());
     inputFileAvatar.addEventListener('change', (e) => {
@@ -824,22 +775,17 @@
       }
     });
 
-    // Save Profile Logic
     async function saveProfileLogic() {
       if(!currentUser) return;
-
-      btnSubmit.disabled = true; // reuse spinner concept or create new
+      btnSubmit.disabled = true;
       submitSpinner.classList.remove('hidden');
 
       try {
         let newAvatarUrl = userProfile.avatarUrl;
-
-        // If new avatar selected, upload first
         if(tempAvatarFile) {
           newAvatarUrl = await uploadImageToCloudinary(tempAvatarFile);
         }
 
-        // Update Firestore
         const userRef = doc(db, "users", currentUser.uid);
         await updateDoc(userRef, {
           name: inputName.value,
@@ -848,7 +794,6 @@
           avatarUrl: newAvatarUrl
         });
 
-        // Update Local State
         userProfile.name = inputName.value;
         userProfile.job = inputJob.value;
         userProfile.branch = inputBranch.value;
@@ -875,7 +820,7 @@
     document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
 
 
-    // --- LOGIC: TABS & NAVIGATION ---
+    // --- TABS ---
     function switchTab(tabId) {
       viewAbsensi.classList.add('hidden');
       viewAbsensi.classList.remove('flex');
@@ -913,35 +858,50 @@
     mobileTabAbsensi.addEventListener('click', () => switchTab('absensi'));
     mobileTabProfile.addEventListener('click', () => switchTab('profile'));
 
-    // --- LOGIC: AUTH HANDLERS ---
-    btnGoogleLogin.addEventListener('click', () => {
+    // --- AUTH HANDLERS (PERBAIKAN) ---
+    btnGoogleLogin.addEventListener('click', async () => {
       const provider = new GoogleAuthProvider();
       loginText.textContent = "Menghubungkan...";
       btnGoogleLogin.disabled = true;
+      loginErrorMsg.classList.add('hidden');
       
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          // Signed in, onAuthStateChanged will handle UI
-        }).catch((error) => {
-          console.error(error);
-          loginText.textContent = "Login Gagal";
-          btnGoogleLogin.disabled = false;
-        });
+      try {
+        const result = await signInWithPopup(auth, provider);
+        // User handled by onAuthStateChanged
+      } catch (error) {
+        console.error("Login Error:", error);
+        
+        // Reset UI if fail
+        loginText.textContent = "Login Gagal";
+        btnGoogleLogin.disabled = false;
+        
+        // Show specific error message
+        let msg = "Terjadi kesalahan.";
+        if (error.code === 'auth/popup-blocked') {
+          msg = "Popup diblokir browser. Izinkan popup untuk login.";
+        } else if (error.code === 'auth/unauthorized-domain') {
+          msg = "Domain tidak diizinkan di Firebase Console.";
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          msg = "Login dibatalkan.";
+          loginText.textContent = "Login dengan Google"; // Reset text normal if just cancelled
+        }
+        
+        if (error.code !== 'auth/cancelled-popup-request') {
+            loginErrorMsg.textContent = msg;
+            loginErrorMsg.classList.remove('hidden');
+        }
+      }
     });
 
     const handleLogout = () => {
-      signOut(auth).then(() => {
-        // Sign-out successful.
-      }).catch((error) => {
-        console.error(error);
-      });
+      signOut(auth).then(() => {}).catch((error) => console.error(error));
     };
 
     document.getElementById('btn-logout-desktop').addEventListener('click', handleLogout);
     document.getElementById('btn-logout-mobile').addEventListener('click', handleLogout);
 
 
-    // --- UTILS: MODAL ---
+    // --- MODAL UTILS ---
     function showNotification(title, message, isSuccess) {
       modalTitle.textContent = title; modalDesc.textContent = message;
       const icon = document.getElementById('modal-icon-container');
@@ -960,12 +920,11 @@
       setTimeout(() => customModal.classList.add('hidden'), 300);
     });
 
-    // --- INIT LOCALSTORAGE CACHE (OPTIONAL FALLBACK) ---
-    // Ini memungkinkan UI load cepat sebelum Firebase Auth selesai (opsional)
+    // Init LocalStorage Cache
     const cachedProfile = localStorage.getItem('userProfile');
     if (cachedProfile && !currentUser) {
-       // userProfile = JSON.parse(cachedProfile);
-       // updateProfileUI(); // Preview saja, nanti di override oleh Auth
+       // userProfile = JSON.parse(cachedProfile); // Optional: Use cache immediately
+       // updateProfileUI(); 
     }
 
   </script>
