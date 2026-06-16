@@ -8,15 +8,35 @@
   <meta name="theme-color" content="#18181b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="Sistem Absensi Barbermark">
-  
+
+  <!-- SEO META TAGS -->
+  <meta name="description" content="Sistem Absensi Barbermark - Absensi modern berbasis face recognition untuk barbershop.">
+  <meta name="keywords" content="absensi barber, barbermark, face recognition, absensi karyawan, barbershop system">
+  <meta name="author" content="Barbermark">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph (Facebook / WhatsApp) -->
+  <meta property="og:title" content="Barbermark Absensi">
+  <meta property="og:description" content="Sistem absensi modern berbasis face recognition untuk barbershop">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://barbermark.vercel.app/favicon.png">
+  <meta property="og:url" content="https://barbermark.vercel.app">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Barbermark Absensi">
+  <meta name="twitter:description" content="Sistem absensi modern berbasis face recognition untuk barbershop">
+  <meta name="twitter:image" content="https://barbermark.vercel.app/favicon.png">
+
+  <!-- FAVICON -->
+  <link rel="icon" type="image/png" href="https://barbermark.vercel.app/favicon.png">
+  <link rel="apple-touch-icon" href="https://barbermark.vercel.app/favicon.png">
+
   <title>Barbermark Absensi</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Three.js untuk Visual 3D -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <!-- Face API.js untuk Deteksi Wajah -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
@@ -76,8 +96,8 @@
     .modal-image-container img { max-width: 90%; max-height: 80%; border-radius: 1rem; box-shadow: 0 0 30px rgba(255,255,255,0.1); }
     .modal-image-container.active { display: flex; }
 
-    /* 3D Canvas Container */
-    #three-container {
+    /* Canvas untuk Face Tracking */
+    #face-canvas {
       position: absolute;
       top: 0;
       left: 0;
@@ -85,13 +105,13 @@
       height: 100%;
       z-index: 20; /* Di atas video, di bawah UI overlay */
       pointer-events: none;
-      transform: scaleX(-1); /* Mirror effect */
+      transform: scaleX(-1); /* Mirror effect agar sama dengan video */
     }
   </style>
 </head>
 <body class="text-white h-[100dvh] w-screen overflow-hidden antialiased selection:bg-red-500 selection:text-white">
 
-  <!-- 1. HALAMAN LOGIN (EMAIL ONLY) -->
+  <!-- 1. HALAMAN LOGIN -->
   <div id="login-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-zinc-950 transition-opacity duration-500">
     <div class="absolute top-[-10%] left-[-10%] w-64 h-64 sm:w-96 sm:h-96 bg-red-600/20 blur-[100px] rounded-full"></div>
     <div class="absolute bottom-[-10%] right-[-10%] w-64 h-64 sm:w-96 sm:h-96 bg-red-600/10 blur-[100px] rounded-full"></div>
@@ -165,8 +185,8 @@
       <div id="view-absensi" class="w-full h-full relative bg-black flex flex-col lg:p-4 lg:rounded-[2rem] overflow-hidden">
         <div class="flex-1 w-full h-full relative lg:rounded-[2rem] overflow-hidden bg-zinc-900 flex items-center justify-center">
           
-          <!-- Three.js Container -->
-          <div id="three-container"></div>
+          <!-- Canvas untuk Face Tracking (Pengganti Three.js) -->
+          <canvas id="face-canvas"></canvas>
           
           <!-- Video Feed -->
           <video id="video-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover -scale-x-100"></video>
@@ -356,12 +376,9 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-zinc-400 mb-2">Cabang</label>
-                <select id="input-branch" class="input-field appearance-none">
-                  <option value="Cabang Parung Panjang">Cabang Parung Panjang</option>
-                  <option value="Cabang Bintaro">Cabang Bintaro</option>
-                  <option value="Cabang Depok">Cabang Depok</option>
-                  <option value="Cabang BSD">Cabang BSD</option>
-                  <option value="Cabang Cibubur">Cabang Cibubur</option>
+                <!-- Cabang akan diisi dinamis dari Firestore -->
+                <select id="input-branch" class="input-field appearance-none cursor-pointer">
+                  <option value="">Memuat Cabang...</option>
                 </select>
               </div>
             </div>
@@ -431,12 +448,7 @@
     let tempAvatarFile = null;
     let attendanceHistory = []; 
     let isFaceApiLoaded = false;
-    let dailyLimitReached = false; // Flag batas absen
-
-    // --- THREE.JS VARS ---
-    let scene, camera, renderer, reticleMesh;
-    let reticleTargetPos = { x: 0, y: 0 };
-    let isThreeReady = false;
+    let dailyLimitReached = false;
 
     // --- DOM ---
     const loginScreen = document.getElementById('login-screen');
@@ -452,7 +464,8 @@
     const viewEditProfile = document.getElementById('view-edit-profile');
 
     const videoFeed = document.getElementById('video-feed');
-    const threeContainer = document.getElementById('three-container');
+    const faceCanvas = document.getElementById('face-canvas'); // Canvas Pengganti Three.js
+    const faceCtx = faceCanvas.getContext('2d');
     const cameraFallback = document.getElementById('camera-fallback');
     const capturedResult = document.getElementById('captured-result');
     const liveOverlay = document.getElementById('live-overlay');
@@ -519,96 +532,61 @@
     const modalDesc = document.getElementById('modal-desc');
     const modalBtnClose = document.getElementById('modal-btn-close');
 
-    // --- THREE.JS SETUP ---
-    function initThreeJS() {
-        const width = threeContainer.clientWidth;
-        const height = threeContainer.clientHeight;
-        
-        scene = new THREE.Scene();
-        // Orthographic camera for 2D overlay style
-        camera = new THREE.OrthographicCamera(0, width, 0, height, 1, 1000);
-        camera.position.z = 10;
+    // --- CANVAS FACE TRACKING SETUP ---
+    function resizeCanvas() {
+      faceCanvas.width = videoFeed.clientWidth || window.innerWidth;
+      faceCanvas.height = videoFeed.clientHeight || window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
 
-        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(width, height);
-        threeContainer.appendChild(renderer.domElement);
+    function drawFaceReticle(box) {
+      resizeCanvas();
+      faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+      
+      if (!box) return;
 
-        // Create Reticle (Bracket Style)
-        const geometry = new THREE.BufferGeometry();
-        // Create 4 corners
-        const corners = [
-            // Top Left
-            [-20, 20, 0], [-10, 20, 0], [-10, -20, 0], [-20, -20, 0],
-            [-20, 10, 0], [-10, 10, 0],
-            // Top Right
-            [20, 20, 0], [10, 20, 0], [10, -20, 0], [20, -20, 0],
-            [20, 10, 0], [10, 10, 0],
-            // Bottom Right
-            [20, -20, 0], [10, -20, 0], [10, 20, 0], [20, 20, 0],
-            [20, -10, 0], [10, -10, 0],
-            // Bottom Left
-            [-20, -20, 0], [-10, -20, 0], [-10, 20, 0], [-20, 20, 0],
-            [-20, -10, 0], [-10, -10, 0],
-        ];
-        // Actually let's just use simple lines for better performance
-        const lineMat = new THREE.LineBasicMaterial({ color: 0x06b6d4, linewidth: 2 });
-        
-        reticleMesh = new THREE.Group();
-        
-        // Add 4 lines for corners
-        const createCorner = (x, y, dir) => {
-            const geo = new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(x, y + 20 * dir.y, 0),
-                new THREE.Vector3(x, y, 0),
-                new THREE.Vector3(x + 20 * dir.x, y, 0)
-            ]);
-            const line = new THREE.Line(geo, lineMat);
-            return line;
-        };
+      // Karena canvas di-mirror via CSS, kita gambar dengan koordinat asli dari FaceAPI
+      const x = box.x;
+      const y = box.y;
+      const w = box.width;
+      const h = box.height;
 
-        // TL, TR, BR, BL
-        const positions = [
-            {x: 0, y: 0}, {x: 1, y: 0}, {x: 1, y: 1}, {x: 0, y: 1}
-        ];
-        
-        // Placeholder, we will scale/move this group later
-        // Let's make a simple rectangle that fits a face
-        const rectGeo = new THREE.BoxGeometry(1, 1.3, 0.1); // Ratio roughly face
-        const edges = new THREE.EdgesGeometry(rectGeo);
-        reticleMesh = new THREE.LineSegments(edges, lineMat);
-        
-        scene.add(reticleMesh);
-        reticleMesh.visible = false;
+      faceCtx.strokeStyle = '#06b6d4'; // Cyan
+      faceCtx.lineWidth = 3;
+      faceCtx.shadowColor = '#06b6d4';
+      faceCtx.shadowBlur = 10;
+      
+      // Gambar kotak lengkung (Bracket Style)
+      const r = Math.max(w, h) * 0.1; // Corner radius
+      faceCtx.beginPath();
 
-        isThreeReady = true;
-        animateThree();
+      // Top-Left
+      faceCtx.moveTo(x + r, y);
+      faceCtx.lineTo(x, y);
+      faceCtx.lineTo(x, y + r);
+
+      // Top-Right
+      faceCtx.moveTo(x + w - r, y);
+      faceCtx.lineTo(x + w, y);
+      faceCtx.lineTo(x + w, y + r);
+
+      // Bottom-Right
+      faceCtx.moveTo(x + w, y + h - r);
+      faceCtx.lineTo(x + w, y + h);
+      faceCtx.lineTo(x + w - r, y + h);
+
+      // Bottom-Left
+      faceCtx.moveTo(x + r, y + h);
+      faceCtx.lineTo(x, y + h);
+      faceCtx.lineTo(x, y + h - r);
+
+      faceCtx.stroke();
+      faceCtx.shadowBlur = 0; // Reset shadow
     }
 
-    function animateThree() {
-        requestAnimationFrame(animateThree);
-        
-        // Smoothly move reticle to target
-        if (reticleMesh && reticleMesh.visible) {
-            reticleMesh.position.x += (reticleTargetPos.x - reticleMesh.position.x) * 0.1;
-            reticleMesh.position.y += (reticleTargetPos.y - reticleMesh.position.y) * 0.1;
-        }
-
-        renderer.render(scene, camera);
+    function clearCanvas() {
+      faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
     }
-
-    function handleResize() {
-        if (!camera || !renderer) return;
-        const width = threeContainer.clientWidth;
-        const height = threeContainer.clientHeight;
-        
-        renderer.setSize(width, height);
-        camera.left = 0;
-        camera.right = width;
-        camera.top = 0;
-        camera.bottom = height;
-        camera.updateProjectionMatrix();
-    }
-    window.addEventListener('resize', handleResize);
 
 
     // --- FACE API SETUP ---
@@ -623,7 +601,6 @@
         ]);
         isFaceApiLoaded = true;
         aiLoading.classList.add('hidden');
-        initThreeJS(); // Init 3D after AI loads
         startFaceDetection();
       } catch (err) {
         console.error("Face API Error:", err);
@@ -633,36 +610,27 @@
 
     // --- AUTO CAPTURE LOGIC ---
     let stabilityFrames = 0;
-    const STABILITY_THRESHOLD = 60; // Frames to wait (~2 seconds)
+    const STABILITY_THRESHOLD = 30; // Frames to wait (~1.5 seconds)
     let lastBox = null;
+    let detectionInterval = null;
 
     async function startFaceDetection() {
       if (!isFaceApiLoaded || !videoFeed.srcObject) return;
+      if (detectionInterval) clearInterval(detectionInterval);
 
-      const displaySize = { width: videoFeed.clientWidth || 640, height: videoFeed.clientHeight || 480 };
-
-      setInterval(async () => {
-        if (!videoFeed.srcObject || containerBtnSubmit.classList.contains('hidden') === false || dailyLimitReached) return; 
+      detectionInterval = setInterval(async () => {
+        if (!videoFeed.srcObject || !containerBtnSubmit.classList.contains('hidden') || dailyLimitReached) {
+          clearCanvas();
+          return; 
+        }
 
         const detections = await faceapi.detectAllFaces(videoFeed, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
         
         if (detections.length > 0) {
             const box = detections[0].detection.box;
             
-            // Update Three.js Reticle Position
-            // Need to map FaceAPI coords (0,0 is top left) to Three.js (0,0 is bottom left) because of camera setup?
-            // Actually I set Top:0, Right:width, Bottom:height, Left:0. So y grows down.
-            // FaceAPI y grows down. Three.js with Top:0, Bottom:height -> y grows down.
-            // So direct mapping works.
-            
-            // FaceAPI box is mirrored in CSS (-scale-x), but the data is raw.
-            // We need to mirror X for the visual logic.
-            const mirroredX = displaySize.width - box.x - box.width;
-            
-            // Scale reticle
-            reticleMesh.scale.set(box.width, box.height, 1);
-            reticleMesh.position.set(mirroredX + box.width/2, box.y + box.height/2, 0);
-            reticleMesh.visible = true;
+            // Gambar reticle di Canvas
+            drawFaceReticle(box);
 
             // Stability Check
             if (lastBox) {
@@ -671,7 +639,6 @@
                 const dw = Math.abs(box.width - lastBox.width);
                 const dh = Math.abs(box.height - lastBox.height);
                 
-                // Threshold for movement (pixels)
                 if (dx < 10 && dy < 10 && dw < 10 && dh < 10) {
                     stabilityFrames++;
                 } else {
@@ -682,25 +649,23 @@
             }
             lastBox = box;
 
-            // Update Progress Bar
             const pct = Math.min(100, Math.floor((stabilityFrames / STABILITY_THRESHOLD) * 100));
             stabilityBarContainer.classList.remove('hidden');
             stabilityFill.style.width = `${pct}%`;
             stabilityPct.innerText = `${pct}%`;
 
-            // Auto Capture Trigger
             if (stabilityFrames >= STABILITY_THRESHOLD) {
-                stabilityFrames = 0; // Reset
+                stabilityFrames = 0;
                 stabilityBarContainer.classList.add('hidden');
-                capturePhoto(); // TRIGGER PHOTO
+                capturePhoto();
             }
 
         } else {
-            reticleMesh.visible = false;
+            clearCanvas();
             stabilityFrames = 0;
             stabilityBarContainer.classList.add('hidden');
         }
-      }, 100); // Check every 100ms
+      }, 100);
     }
 
     // --- CLOUDINARY UPLOAD ---
@@ -750,7 +715,6 @@
         if (userDoc.exists()) {
           userProfile = userDoc.data();
         } else {
-          // Jika user login baru (dibuat manual di console), buat profil default
           const newProfile = {
             uid: currentUser.uid,
             name: "Karyawan",
@@ -769,6 +733,41 @@
       }
     }
 
+    // --- AMBIL DATA CABANG DARI FIRESTORE ---
+    async function fetchBranches() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "branches"));
+        const branches = [];
+        querySnapshot.forEach((doc) => {
+          branches.push(doc.data().name || doc.id);
+        });
+
+        // Urutkan secara alfabetis
+        branches.sort();
+
+        // Isi Dropdown
+        inputBranch.innerHTML = '';
+        if (branches.length === 0) {
+           inputBranch.innerHTML = '<option value="">Tidak ada cabang</option>';
+        } else {
+           branches.forEach(branch => {
+             const opt = document.createElement('option');
+             opt.value = branch;
+             opt.textContent = branch;
+             inputBranch.appendChild(opt);
+           });
+        }
+
+        // Set nilai yang dipilih jika userProfile sudah ada
+        if (userProfile && userProfile.branch) {
+          inputBranch.value = userProfile.branch;
+        }
+      } catch (error) {
+        console.error("Error mengambil cabang: ", error);
+        inputBranch.innerHTML = '<option value="">Gagal memuat cabang</option>';
+      }
+    }
+
     // --- AUTH STATE LISTENER ---
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -782,6 +781,8 @@
           loadFaceApiModels(); 
         }, 500);
         fetchUserProfile();
+        fetchBranches(); // Panggil fungsi ambil cabang
+        loadHistoryFromFirestore();
       } else {
         currentUser = null;
         userProfile = null;
@@ -798,6 +799,11 @@
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
       }
+      if (detectionInterval) {
+        clearInterval(detectionInterval);
+        detectionInterval = null;
+      }
+      clearCanvas();
     }
 
     // --- UPDATE UI ---
@@ -815,8 +821,13 @@
       
       profileBranch.innerHTML = `
         <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        ${userProfile.branch}
+        ${userProfile.branch || 'Belum diset'}
       `;
+
+      // Set nilai form edit
+      inputName.value = userProfile.name || '';
+      inputJob.value = userProfile.job || 'Capster';
+      if (userProfile.branch) inputBranch.value = userProfile.branch;
     }
 
     // --- LOGIC ALPHA & STATS ---
@@ -825,7 +836,6 @@
       const attendedDays = new Set();
       const today = new Date();
       
-      // 30 Hari terakhir
       const last30Days = [];
       for(let i=0; i<30; i++) {
         const d = new Date();
@@ -840,7 +850,12 @@
         }
 
         if (rec.type === 'IZIN') {
-          izin++;
+          // Hanya hitung izin yang disetujui sebagai pengganti kehadiran
+          if (rec.leaveStatus === 'APPROVED') {
+            izin++;
+          } else if (rec.leaveStatus === 'PENDING' || rec.leaveStatus === 'REJECTED') {
+            // Jika ditolak atau pending, anggap alpha (tidak hadir tanpa izin valid)
+          }
         } else {
           if (rec.status === 'TERLAMBAT') telat++;
           else hadir++;
@@ -852,7 +867,7 @@
       statHadir.innerText = hadir;
       statTelat.innerText = telat;
       statIzin.innerText = izin;
-      statAlpha.innerText = alpha;
+      statAlpha.innerText = alpha < 0 ? 0 : alpha;
     }
 
     // --- LOAD HISTORY & LIMIT CHECK ---
@@ -860,33 +875,29 @@
       if (!currentUser || !userProfile) return;
       
       historyList.innerHTML = `<div class="p-8 text-center text-zinc-500"><div class="loader"></div></div>`;
-      dailyLimitReached = false; // Reset check
+      dailyLimitReached = false;
       
       try {
-        // 1. Check Today's Attendance (Untuk Limit)
         const todayKey = new Date().toISOString().split('T')[0];
         const qToday = query(collection(db, "attendance"), where("uid", "==", currentUser.uid), where("dateStr", "==", todayKey));
         const snapToday = await getDocs(qToday);
         
         if (!snapToday.empty) {
            dailyLimitReached = true;
-           // Ubah UI Tombol Capture
            btnCapture.classList.add('opacity-50', 'cursor-not-allowed');
            btnCapture.disabled = true;
-           // Tampilkan pesan di overlay
            shiftBadge.textContent = "SUDAH ABSEN";
            shiftBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-red-500/50 bg-red-500/20 text-red-400 backdrop-blur-md";
            statusBadge.textContent = "HARI INI SELESAI";
            statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-white/20 bg-white/10 text-zinc-400 backdrop-blur-md";
-           containerBtnCapture.classList.add('hidden'); // Sembunyikan tombol
+           containerBtnCapture.classList.add('hidden');
         } else {
             btnCapture.classList.remove('opacity-50', 'cursor-not-allowed');
             btnCapture.disabled = false;
             containerBtnCapture.classList.remove('hidden');
-            updateStatusUI(); // Kembalikan status normal
+            updateStatusUI();
         }
 
-        // 2. Load Full History for Stats
         const q = query(collection(db, "attendance"), where("uid", "==", currentUser.uid), orderBy("timestamp", "desc"), limit(30));
         const querySnapshot = await getDocs(q);
         
@@ -916,6 +927,7 @@
              dateObj: dateObj,
              status: 'IZIN',
              reason: data.reason,
+             leaveStatus: data.status || 'PENDING', // PENDING, APPROVED, REJECTED
              photoUrl: null
            });
         });
@@ -925,7 +937,6 @@
         attendanceHistory = records; 
         checkAlphaStatusAndRenderStats();
 
-        // Render HTML History
         historyList.innerHTML = '';
         if (records.length === 0) {
           historyList.innerHTML = '<div class="p-8 text-center text-zinc-500">Belum ada riwayat absensi.</div>';
@@ -939,17 +950,31 @@
           
           let statusColor = "text-green-400", statusBg = "bg-green-500/20";
           let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+          let statusText = rec.shift === 'PULANG' ? 'PULANG' : 'MASUK';
 
           if(rec.status === 'TERLAMBAT') { 
             statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20"; 
             icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+            statusText = "TERLAMBAT";
           } 
           else if (rec.type === 'IZIN') { 
             statusColor = "text-blue-400"; statusBg = "bg-blue-500/20";
             icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
+            
+            if (rec.leaveStatus === 'APPROVED') {
+              statusText = "IZIN DISETUJUI";
+              statusColor = "text-green-400"; statusBg = "bg-green-500/20";
+            } else if (rec.leaveStatus === 'REJECTED') {
+              statusText = "IZIN DITOLAK";
+              statusColor = "text-red-400"; statusBg = "bg-red-500/20";
+            } else {
+              statusText = "IZIN PENDING";
+              statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20";
+            }
           }
           else if (rec.shift === 'PULANG') {
              statusColor = "text-zinc-300"; statusBg = "bg-zinc-500/20";
+             statusText = "PULANG";
           }
 
           let mediaContent = rec.photoUrl ? 
@@ -962,274 +987,23 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
                    <div class="p-1.5 rounded-md ${statusBg} ${statusColor}">${icon}</div>
-                   <span class="font-bold text-white text-sm sm:text-base truncate">${rec.shift || rec.type}</span>
-                   <span class="text-[10px] sm:text-xs text-zinc-500 truncate">${rec.location || '-'}</span>
+                   <span class="font-bold text-sm sm:text-base">${statusText}</span>
                 </div>
-                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                    <p class="text-xs sm:text-sm font-bold text-zinc-300">${timeStr}</p>
-                    <p class="text-xs text-zinc-500">${dateStr}</p>
-                </div>
-              </div>
-              <div class="text-right flex-shrink-0">
-                <span class="inline-block px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold ${statusBg} ${statusColor}">${rec.status}</span>
+                <p class="text-xs text-zinc-400 ml-1 truncate">${dateStr} • ${timeStr}</p>
+                ${rec.reason ? `<p class="text-xs text-zinc-500 ml-1 mt-1 italic truncate">"${rec.reason}"</p>` : ''}
               </div>
             </div>
           `;
-          historyList.innerHTML += html;
+          historyList.insertAdjacentHTML('beforeend', html);
         });
 
       } catch (error) {
-        console.error("Firestore Error:", error);
-        historyList.innerHTML = `<div class="p-6 text-center"><p class="text-red-400 font-bold">Error Load Data</p></div>`;
-      }
-    }
-    
-    window.viewImage = (url) => {
-      document.getElementById('modal-img-preview').src = url;
-      document.getElementById('image-modal').classList.add('active');
-    }
-
-    // --- CLOCK & SHIFT ---
-    function calculateAttendanceStatus() {
-      const now = new Date();
-      const h = now.getHours();
-      if (h >= 10 && h < 22) {
-        if (h === 10 && now.getMinutes() > 15 || h > 10) return { type: 'MASUK', status: 'TERLAMBAT', isLate: true, btnColor: 'bg-yellow-500', btnShadow: 'shadow-yellow-500/25' };
-        return { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false, btnColor: 'bg-red-500', btnShadow: 'shadow-red-500/25' };
-      }
-      return { type: 'PULANG', status: 'SELESAI', isLate: false, btnColor: 'bg-blue-500', btnShadow: 'shadow-blue-500/25' };
-    }
-
-    function updateStatusUI() {
-      const status = calculateAttendanceStatus();
-      currentAttendanceStatus = status; 
-      shiftBadge.textContent = `SHIFT ${status.type}`;
-      statusBadge.textContent = status.status;
-      btnCapture.className = `w-16 h-16 sm:w-20 sm:h-20 ${status.btnColor} hover:brightness-110 rounded-full border-4 border-white/25 flex items-center justify-center transition-all duration-300 active:scale-95 shadow-2xl ${status.btnShadow}`;
-    }
-
-    function updateClock() {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      liveTime.textContent = timeStr;
-      liveDate.textContent = dateStr;
-      if(!dailyLimitReached) updateStatusUI();
-      
-      let greet = "SELAMAT PAGI";
-      const h = now.getHours();
-      if (h >= 4 && h < 11) greet = "SELAMAT PAGI";
-      else if (h >= 11 && h < 15) greet = "SELAMAT SIANG";
-      else if (h >= 15 && h < 18) greet = "SELAMAT SORE";
-      else greet = "SELAMAT MALAM";
-      if(profileGreeting.textContent !== greet) profileGreeting.textContent = greet;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-
-    // --- LOCATION ---
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
-            const data = await res.json();
-            let loc = "";
-            if (data.address.road) loc += data.address.road + ", ";
-            if (data.address.village) loc += data.address.village + ", ";
-            else if (data.address.town) loc += data.address.town + ", ";
-            else if (data.address.city) loc += data.address.city + ", ";
-            if (loc.length > 2) locationString = loc.slice(0, -2);
-            else locationString = data.display_name.split(',')[0];
-            liveLocation.textContent = locationString;
-            locSpinner.classList.add('hidden');
-          } catch (e) { locSpinner.classList.add('hidden'); }
-        },
-        () => { liveLocation.textContent = "Lokasi Gagal"; locSpinner.classList.add('hidden'); }
-      );
-    }
-
-    // --- CAMERA ---
-    async function initCamera() {
-      if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-        currentStream = stream;
-        videoFeed.srcObject = stream;
-        videoFeed.onloadedmetadata = () => { videoFeed.play(); };
-        videoFeed.classList.remove('hidden');
-        cameraFallback.classList.add('hidden');
-        hasCameraPermission = true;
-      } catch (err) {
-        videoFeed.classList.add('hidden');
-        cameraFallback.classList.remove('hidden');
-        hasCameraPermission = false;
+        console.error("Error load history: ", error);
+        historyList.innerHTML = '<div class="p-8 text-center text-red-500">Gagal memuat riwayat.</div>';
       }
     }
 
-    // --- CAPTURE & SUBMIT ---
-    function capturePhoto() {
-      const ctx = watermarkCanvas.getContext('2d');
-      watermarkCanvas.width = 1280; watermarkCanvas.height = 720;
-
-      if (hasCameraPermission && videoFeed.srcObject) {
-        ctx.save();
-        ctx.translate(watermarkCanvas.width, 0);
-        ctx.scale(-1, 1);
-        const vRatio = videoFeed.videoWidth / videoFeed.videoHeight;
-        const cRatio = watermarkCanvas.width / watermarkCanvas.height;
-        let dW, dH, sX, sY;
-        if (vRatio > cRatio) { dH = watermarkCanvas.height; dW = dH * vRatio; sX = (watermarkCanvas.width - dW) / 2; sY = 0; }
-        else { dW = watermarkCanvas.width; dH = dW / vRatio; sX = 0; sY = (watermarkCanvas.height - dH) / 2; }
-        ctx.drawImage(videoFeed, sX, sY, dW, dH);
-        ctx.restore();
-
-        // Add Watermark
-        ctx.font = "bold 30px 'Plus Jakarta Sans'";
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
-        ctx.fillText(`BARBERMARK - ${userProfile.name}`, 40, watermarkCanvas.height - 80);
-        ctx.font = "500 24px 'Plus Jakarta Sans'";
-        ctx.fillText(`${new Date().toLocaleString('id-ID')} | ${locationString}`, 40, watermarkCanvas.height - 40);
-
-        capturedResult.src = watermarkCanvas.toDataURL('image/jpeg', 0.85);
-        capturedResult.classList.remove('hidden');
-        liveOverlay.classList.add('opacity-0');
-        containerBtnCapture.classList.add('hidden');
-        stabilityBarContainer.classList.add('hidden'); // Hide progress bar on capture
-        containerBtnSubmit.classList.remove('hidden');
-        
-        // Hide Three.js overlay when photo is taken
-        reticleMesh.visible = false;
-      }
-    }
-
-    async function submitAttendance() {
-      btnSubmit.disabled = true;
-      submitSpinner.classList.remove('hidden');
-      submitText.textContent = "Mengirim...";
-
-      try {
-        const response = await fetch(capturedResult.src);
-        const blob = await response.blob();
-        const file = new File([blob], "attendance.jpg", { type: "image/jpeg" });
-        const photoUrl = await uploadImageToCloudinary(file);
-        const dateStr = new Date().toISOString().split('T')[0];
-
-        await addDoc(collection(db, "attendance"), {
-          uid: currentUser.uid,
-          name: userProfile.name,
-          photoUrl: photoUrl,
-          location: locationString,
-          type: currentAttendanceStatus.type,
-          status: currentAttendanceStatus.status,
-          timestamp: Timestamp.now(),
-          dateStr: dateStr // Added for easy query
-        });
-
-        showModal("Berhasil!", "Absensi Anda telah tercatat.");
-        resetCameraState();
-        loadHistoryFromFirestore(); // Refresh UI and check limits
-
-      } catch (error) {
-        console.error(error);
-        showModal("Gagal", "Terjadi kesalahan saat mengirim data.");
-      } finally {
-        btnSubmit.disabled = false;
-        submitSpinner.classList.add('hidden');
-        submitText.textContent = "Kirim";
-      }
-    }
-
-    function resetCameraState() {
-      capturedResult.classList.add('hidden');
-      liveOverlay.classList.remove('opacity-0');
-      containerBtnCapture.classList.remove('hidden');
-      containerBtnSubmit.classList.add('hidden');
-      // Reset stability logic
-      lastBox = null;
-      stabilityFrames = 0;
-    }
-
-    // --- EVENT LISTENERS ---
-    btnCapture.addEventListener('click', capturePhoto); // Manual capture still possible
-    btnRetake.addEventListener('click', resetCameraState);
-    btnSubmit.addEventListener('click', submitAttendance);
-
-    // Tabs
-    function switchTab(tab) {
-      if (tab === 'absensi') {
-        viewAbsensi.classList.remove('hidden');
-        viewProfile.classList.add('hidden');
-        viewEditProfile.classList.add('hidden');
-        sidebarTabAbsensi.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25";
-        sidebarTabProfile.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white";
-        mobileTabAbsensi.className = "text-sm font-bold transition-colors text-red-500";
-        mobileTabProfile.className = "text-sm font-bold transition-colors text-zinc-400 hover:text-white";
-        loadHistoryFromFirestore();
-      } else if (tab === 'profile') {
-        viewAbsensi.classList.add('hidden');
-        viewProfile.classList.remove('hidden');
-        viewEditProfile.classList.add('hidden');
-        sidebarTabAbsensi.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white";
-        sidebarTabProfile.className = "w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25";
-        mobileTabAbsensi.className = "text-sm font-bold transition-colors text-zinc-400 hover:text-white";
-        mobileTabProfile.className = "text-sm font-bold transition-colors text-red-500";
-        loadHistoryFromFirestore();
-      } else if (tab === 'edit-profile') {
-        viewAbsensi.classList.add('hidden');
-        viewProfile.classList.add('hidden');
-        viewEditProfile.classList.remove('hidden');
-        inputName.value = userProfile.name;
-        inputJob.value = userProfile.job;
-        inputBranch.value = userProfile.branch;
-      }
-    }
-
-    sidebarTabAbsensi.addEventListener('click', () => switchTab('absensi'));
-    sidebarTabProfile.addEventListener('click', () => switchTab('profile'));
-    mobileTabAbsensi.addEventListener('click', () => switchTab('absensi'));
-    mobileTabProfile.addEventListener('click', () => switchTab('profile'));
-
-    // Logout
-    const handleLogout = () => signOut(auth);
-    document.getElementById('btn-logout-desktop').addEventListener('click', handleLogout);
-    document.getElementById('btn-logout-mobile').addEventListener('click', handleLogout);
-
-    // Profile Edit
-    const editTrigger = [document.getElementById('btn-edit-profile-trigger'), document.getElementById('btn-edit-profile-small')];
-    editTrigger.forEach(el => el.addEventListener('click', () => switchTab('edit-profile')));
-    
-    document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
-    document.getElementById('btn-change-avatar').addEventListener('click', () => inputFileAvatar.click());
-    inputFileAvatar.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        tempAvatarFile = file;
-        editAvatarPreview.src = URL.createObjectURL(file);
-      }
-    });
-
-    const saveProfile = async () => {
-      const updates = { name: inputName.value, job: inputJob.value, branch: inputBranch.value };
-      try {
-        if (tempAvatarFile) {
-          const url = await uploadImageToCloudinary(tempAvatarFile);
-          updates.avatarUrl = url;
-        }
-        await updateDoc(doc(db, "users", currentUser.uid), updates);
-        await fetchUserProfile();
-        showModal("Profil Diupdate", "Data profil Anda berhasil disimpan.");
-        switchTab('profile');
-        tempAvatarFile = null;
-      } catch (err) { showModal("Gagal", "Gagal menyimpan profil."); }
-    };
-
-    document.getElementById('btn-save-profile').addEventListener('click', saveProfile);
-    document.getElementById('btn-save-profile-mobile').addEventListener('click', saveProfile);
-
-    // Permission Logic
+    // --- LOGIC TOMBOL IZIN ---
     btnAddPermission.addEventListener('click', () => {
       permissionTriggerContainer.classList.add('hidden');
       permissionFormContainer.classList.remove('hidden');
@@ -1243,34 +1017,341 @@
 
     btnSendPermission.addEventListener('click', async () => {
       const reason = inputReason.value.trim();
-      if (!reason) return alert("Harap isi alasan.");
+      if (!reason) {
+        showModal('Error', 'Alasan izin tidak boleh kosong!', 'error');
+        return;
+      }
+
+      btnSendPermission.innerText = 'Mengirim...';
+      btnSendPermission.disabled = true;
+
       try {
         await addDoc(collection(db, "leave_requests"), {
           uid: currentUser.uid,
-          name: userProfile.name,
+          userName: userProfile.name,
+          branch: userProfile.branch,
           reason: reason,
-          status: 'PENDING',
+          status: 'PENDING', // Status diawal PENDING
           createdAt: Timestamp.now()
         });
-        showModal("Terkirim", "Pengajuan izin Anda telah dikirim.");
-        inputReason.value = '';
-        permissionTriggerContainer.classList.remove('hidden');
-        permissionFormContainer.classList.add('hidden');
-        loadHistoryFromFirestore();
-      } catch (err) { showModal("Gagal", "Gagal mengirim pengajuan."); }
+
+        showModal('Berhasil', 'Pengajuan izin telah dikirim. Menunggu persetujuan admin.', 'success');
+        btnCancelPermission.click();
+        loadHistoryFromFirestore(); // Refresh history
+      } catch (error) {
+        console.error("Error kirim izin: ", error);
+        showModal('Gagal', 'Terjadi kesalahan saat mengirim pengajuan.', 'error');
+      } finally {
+        btnSendPermission.innerText = 'Kirim Pengajuan';
+        btnSendPermission.disabled = false;
+      }
     });
 
-    // Modal
-    function showModal(title, desc) {
+    // --- LOGIC KAMERA ---
+    async function initCamera() {
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        videoFeed.srcObject = currentStream;
+        hasCameraPermission = true;
+        cameraFallback.classList.add('hidden');
+        videoFeed.style.display = 'block';
+        resizeCanvas();
+      } catch (err) {
+        hasCameraPermission = false;
+        cameraFallback.classList.remove('hidden');
+        videoFeed.style.display = 'none';
+      }
+    }
+
+    // --- LOGIC CAPTURE ---
+    function capturePhoto() {
+      if (dailyLimitReached || !hasCameraPermission) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = videoFeed.videoWidth;
+      canvas.height = videoFeed.videoHeight;
+      const ctx = canvas.getContext('2d');
+      
+      // Mirror the canvas drawing
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      capturedResult.src = dataUrl;
+      capturedResult.classList.remove('hidden');
+      videoFeed.style.display = 'none';
+      clearCanvas(); // Hapus canvas tracking
+      
+      containerBtnCapture.classList.add('hidden');
+      containerBtnSubmit.classList.remove('hidden');
+      stabilityBarContainer.classList.add('hidden');
+    }
+
+    btnCapture.addEventListener('click', () => {
+      // Manual capture fallback
+      capturePhoto();
+    });
+
+    btnRetake.addEventListener('click', () => {
+      capturedResult.classList.add('hidden');
+      videoFeed.style.display = 'block';
+      containerBtnCapture.classList.remove('hidden');
+      containerBtnSubmit.classList.add('hidden');
+    });
+
+    btnSubmit.addEventListener('click', async () => {
+      submitText.classList.add('hidden');
+      submitSpinner.classList.remove('hidden');
+      btnSubmit.disabled = true;
+
+      try {
+        // Convert DataURL to Blob
+        const res = await fetch(capturedResult.src);
+        const blob = await res.blob();
+        const file = new File([blob], `absen_${currentUser.uid}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+        // Upload to Cloudinary
+        const photoUrl = await uploadImageToCloudinary(file);
+
+        // Upload to Firestore
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        
+        await addDoc(collection(db, "attendance"), {
+          uid: currentUser.uid,
+          userName: userProfile.name,
+          branch: userProfile.branch,
+          type: currentAttendanceStatus.type, // MASUK / PULANG
+          status: currentAttendanceStatus.status, // TEPAT WAKTU / TERLAMBAT
+          photoUrl: photoUrl,
+          location: locationString,
+          timestamp: Timestamp.now(),
+          dateStr: dateStr
+        });
+
+        showModal('Berhasil', `Absensi ${currentAttendanceStatus.type} berhasil dikirim!`, 'success');
+        btnRetake.click();
+        loadHistoryFromFirestore(); // Refresh status limit & history
+
+      } catch (error) {
+        console.error("Error submit absen: ", error);
+        showModal('Gagal', 'Terjadi kesalahan saat mengirim absensi.', 'error');
+      } finally {
+        submitText.classList.remove('hidden');
+        submitSpinner.classList.add('hidden');
+        btnSubmit.disabled = false;
+      }
+    });
+
+    // --- UI HELPERS ---
+    function showModal(title, desc, type = 'success') {
       modalTitle.innerText = title;
       modalDesc.innerText = desc;
+      
+      const iconContainer = document.getElementById('modal-icon-container');
+      if (type === 'success') {
+        iconContainer.className = 'w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4';
+        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+      } else {
+        iconContainer.className = 'w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4';
+        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+      }
+
       customModal.classList.remove('hidden');
-      customModal.classList.remove('opacity-0');
+      setTimeout(() => {
+        customModal.classList.remove('opacity-0');
+        customModal.querySelector('div').classList.remove('scale-95');
+      }, 10);
     }
+
     modalBtnClose.addEventListener('click', () => {
       customModal.classList.add('opacity-0');
+      customModal.querySelector('div').classList.add('scale-95');
       setTimeout(() => customModal.classList.add('hidden'), 300);
     });
+
+    // View Image Global Function
+    window.viewImage = (url) => {
+      document.getElementById('modal-img-preview').src = url;
+      document.getElementById('image-modal').classList.add('active');
+    };
+
+    // --- TAB SWITCHING ---
+    function switchTab(tab) {
+      if (tab === 'absensi') {
+        viewAbsensi.classList.remove('hidden');
+        viewProfile.classList.add('hidden');
+        viewEditProfile.classList.add('hidden');
+        sidebarTabAbsensi.className = 'w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25';
+        sidebarTabProfile.className = 'w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white';
+        mobileTabAbsensi.className = 'text-sm font-bold transition-colors text-red-500';
+        mobileTabProfile.className = 'text-sm font-bold transition-colors text-zinc-400 hover:text-white';
+        if (hasCameraPermission && isFaceApiLoaded && !detectionInterval) startFaceDetection();
+      } else if (tab === 'profile') {
+        viewAbsensi.classList.add('hidden');
+        viewProfile.classList.remove('hidden');
+        viewEditProfile.classList.add('hidden');
+        sidebarTabProfile.className = 'w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-red-500 text-white shadow-lg shadow-red-500/25';
+        sidebarTabAbsensi.className = 'w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-zinc-400 hover:bg-zinc-800/50 hover:text-white';
+        mobileTabProfile.className = 'text-sm font-bold transition-colors text-red-500';
+        mobileTabAbsensi.className = 'text-sm font-bold transition-colors text-zinc-400 hover:text-white';
+        if (detectionInterval) {
+          clearInterval(detectionInterval);
+          detectionInterval = null;
+          clearCanvas();
+        }
+      } else if (tab === 'edit-profile') {
+        viewAbsensi.classList.add('hidden');
+        viewProfile.classList.add('hidden');
+        viewEditProfile.classList.remove('hidden');
+        fetchBranches(); // Refresh cabang saat masuk edit
+      }
+    }
+
+    sidebarTabAbsensi.addEventListener('click', () => switchTab('absensi'));
+    sidebarTabProfile.addEventListener('click', () => switchTab('profile'));
+    mobileTabAbsensi.addEventListener('click', () => switchTab('absensi'));
+    mobileTabProfile.addEventListener('click', () => switchTab('profile'));
+
+    document.getElementById('btn-edit-profile-trigger').addEventListener('click', () => switchTab('edit-profile'));
+    document.getElementById('btn-edit-profile-small').addEventListener('click', () => switchTab('edit-profile'));
+    document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
+
+    // --- SAVE PROFILE ---
+    async function saveProfileData() {
+      const newName = inputName.value.trim();
+      const newJob = inputJob.value;
+      const newBranch = inputBranch.value;
+
+      if (!newName) {
+        showModal('Error', 'Nama tidak boleh kosong!', 'error');
+        return;
+      }
+
+      let avatarUrl = userProfile.avatarUrl;
+
+      if (tempAvatarFile) {
+        try {
+          avatarUrl = await uploadImageToCloudinary(tempAvatarFile);
+        } catch (e) {
+          console.error("Avatar upload error", e);
+        }
+      }
+
+      try {
+        await updateDoc(doc(db, "users", currentUser.uid), {
+          name: newName,
+          job: newJob,
+          branch: newBranch,
+          avatarUrl: avatarUrl
+        });
+        
+        userProfile.name = newName;
+        userProfile.job = newJob;
+        userProfile.branch = newBranch;
+        userProfile.avatarUrl = avatarUrl;
+        
+        updateProfileUI();
+        switchTab('profile');
+        showModal('Berhasil', 'Profil berhasil diperbarui!', 'success');
+      } catch (error) {
+        console.error("Error save profile: ", error);
+        showModal('Gagal', 'Gagal menyimpan profil.', 'error');
+      }
+    }
+
+    document.getElementById('btn-save-profile').addEventListener('click', saveProfileData);
+    document.getElementById('btn-save-profile-mobile').addEventListener('click', saveProfileData);
+
+    // --- AVATAR CHANGE ---
+    document.getElementById('btn-change-avatar').addEventListener('click', () => inputFileAvatar.click());
+    inputFileAvatar.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        tempAvatarFile = file;
+        const reader = new FileReader();
+        reader.onload = (event) => editAvatarPreview.src = event.target.result;
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // --- LOGOUT ---
+    function doLogout() {
+      stopCamera();
+      signOut(auth);
+    }
+    document.getElementById('btn-logout-desktop').addEventListener('click', doLogout);
+    document.getElementById('btn-logout-mobile').addEventListener('click', doLogout);
+
+    // --- CLOCK & LOCATION ---
+    function updateClock() {
+      const now = new Date();
+      liveTime.innerText = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      liveDate.innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+      
+      // Cek jam masuk (misal jam 9 pagi)
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      
+      if (hour > 9 || (hour === 9 && minute > 0)) {
+        currentAttendanceStatus = { type: 'MASUK', status: 'TERLAMBAT', isLate: true };
+        statusBadge.textContent = "TERLAMBAT";
+        statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/50";
+      } else {
+        currentAttendanceStatus = { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false };
+        statusBadge.textContent = "TEPAT WAKTU";
+        statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/50";
+      }
+    }
+
+    function updateStatusUI() {
+       statusBadge.textContent = currentAttendanceStatus.status;
+       statusBadge.className = currentAttendanceStatus.isLate 
+         ? "px-3 py-1 rounded-lg text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/50"
+         : "px-3 py-1 rounded-lg text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/50";
+    }
+
+    setInterval(updateClock, 1000);
+
+    // --- GEOFENCING / LOCATION ---
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          
+          // Reverse Geocoding using OpenStreetMap Nominatim (Gratis)
+          try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+            const data = await response.json();
+            if (data && data.address) {
+              const addr = data.address;
+              locationString = `${addr.road || ''}, ${addr.suburb || addr.village || ''}, ${addr.city || addr.town || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '');
+              if (!locationString) locationString = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+            } else {
+              locationString = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+            }
+          } catch (e) {
+            locationString = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+          }
+
+          locSpinner.classList.add('hidden');
+          liveLocation.innerText = locationString;
+        }, (error) => {
+          locSpinner.classList.add('hidden');
+          liveLocation.innerText = "Izin Lokasi Ditolak";
+          locationString = "Lokasi Tidak Diketahui";
+        });
+      } else {
+        locSpinner.classList.add('hidden');
+        liveLocation.innerText = "Geolocation Tidak Didukung";
+      }
+    }
+
+    // Init clock & location on load
+    updateClock();
+    getLocation();
 
   </script>
 </body>
