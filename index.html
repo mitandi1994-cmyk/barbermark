@@ -3,14 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <!-- PWA META TAGS -->
   <meta name="theme-color" content="#18181b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="Sistem Absensi Barbermark">
-  <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="apple-touch-icon" href="favicon.png">
+
+  <!-- SEO META TAGS -->
+  <meta name="description" content="Sistem Absensi Barbermark - Absensi modern berbasis face recognition untuk barbershop.">
+  <meta name="keywords" content="absensi barber, barbermark, face recognition, absensi karyawan, barbershop system">
+  <meta name="author" content="Barbermark">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph (Facebook / WhatsApp) -->
+  <meta property="og:title" content="Barbermark Absensi">
+  <meta property="og:description" content="Sistem absensi modern berbasis face recognition untuk barbershop">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://barbermark.vercel.app/favicon.png">
+  <meta property="og:url" content="https://barbermark.vercel.app">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Barbermark Absensi">
+  <meta name="twitter:description" content="Sistem absensi modern berbasis face recognition untuk barbershop">
+  <meta name="twitter:image" content="https://barbermark.vercel.app/favicon.png">
+
+  <!-- FAVICON -->
+  <link rel="icon" type="image/png" href="https://barbermark.vercel.app/favicon.png">
+  <link rel="apple-touch-icon" href="https://barbermark.vercel.app/favicon.png">
+
   <title>Barbermark Absensi</title>
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Face API.js untuk Deteksi Wajah -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
