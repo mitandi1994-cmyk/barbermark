@@ -244,7 +244,6 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-zinc-400 mb-2">Cabang</label>
-                <!-- CABANG MANUAL - TANPA FIRESTORE -->
                <select id="input-branch" class="input-field appearance-none cursor-pointer">
   <option value="Kolega Barbershop Batavia">Kolega Barbershop Batavia</option>
   <option value="Barbershop 88 Premium">Barbershop 88 Premium</option>
@@ -306,7 +305,8 @@
     <p class="text-white mt-4 text-sm font-bold">Tap untuk menutup</p>
   </div>
 
-  <script type="module">
+   <script type="module">
+    // --- FIREBASE & CLOUDINARY IMPORTS & CONFIG ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc, query, where, orderBy, limit, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -324,19 +324,27 @@
     const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dl6iyeqrc/image/upload";
     const CLOUDINARY_UPLOAD_PRESET = "barbermark";
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // CONFIG WAKTU ABSEN
+    // --- LOCAL STORAGE KEYS ---
+    const STORAGE_KEYS = {
+      USER: 'barbermark_user',
+      PROFILE: 'barbermark_profile'
+    };
+
+    // --- CONFIG WAKTU ABSEN ---
     const SHIFT_MASUK_START = 9 * 60 + 30; // Jam 09:30 dalam menit
     const SHIFT_TELAT = 10 * 60 + 15;      // Jam 10:15 dalam menit
     const SHIFT_PULANG_START = 10 * 60;    // Jam 10:00 dalam menit
 
+    // --- STATE ---
     let currentUser = null;
     let userProfile = null;
     let currentStream = null;
-    let locationString = "Mencari Lokasi...";
+    let locationString = "Mencari Lokasi..."; // Akan berisi Nama Jalan/Daerah nanti
     let hasCameraPermission = true;
     let currentAttendanceStatus = { type: 'MASUK', status: 'TEPAT WAKTU', isLate: false };
     let tempAvatarFile = null;
@@ -344,7 +352,7 @@
     let hasCheckedInToday = false;
     let hasCheckedOutToday = false;
 
-    // --- DOM ---
+    // --- DOM ELEMENTS ---
     const loginScreen = document.getElementById('login-screen');
     const mainApp = document.getElementById('main-app');
     const loginForm = document.getElementById('login-form');
@@ -419,6 +427,47 @@
     const modalDesc = document.getElementById('modal-desc');
     const modalBtnClose = document.getElementById('modal-btn-close');
 
+    // --- HELPER FUNCTIONS ---
+    
+    // Expose viewImage to window for onclick attributes
+    window.viewImage = (url) => {
+      const modal = document.getElementById('image-modal');
+      const img = document.getElementById('modal-img-preview');
+      img.src = url;
+      modal.classList.add('active');
+    };
+
+    function showModal(title, desc, type = 'success') {
+      modalTitle.textContent = title;
+      modalDesc.textContent = desc;
+      customModal.classList.remove('hidden');
+      // Small timeout to allow display:flex to apply before opacity transition
+      setTimeout(() => {
+        customModal.classList.remove('opacity-0');
+        customModal.querySelector('div').classList.remove('scale-95');
+        customModal.querySelector('div').classList.add('scale-100');
+      }, 10);
+
+      const iconContainer = document.getElementById('modal-icon-container');
+      if (type === 'warning') {
+        iconContainer.className = 'w-16 h-16 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center mx-auto mb-4';
+        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+      } else {
+        iconContainer.className = 'w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4';
+        iconContainer.innerHTML = `<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+      }
+    }
+
+    function closeModal() {
+      customModal.classList.add('opacity-0');
+      customModal.querySelector('div').classList.remove('scale-100');
+      customModal.querySelector('div').classList.add('scale-95');
+      setTimeout(() => {
+        customModal.classList.add('hidden');
+      }, 300);
+    }
+    modalBtnClose.addEventListener('click', closeModal);
+
     // --- CLOUDINARY UPLOAD ---
     async function uploadImageToCloudinary(file) {
       const formData = new FormData();
@@ -427,6 +476,7 @@
       try {
         const response = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
         const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
         return data.secure_url;
       } catch (error) {
         console.error("Cloudinary Error:", error);
@@ -434,7 +484,44 @@
       }
     }
 
-    // --- LOGIN ---
+    // --- AUTH & PERSISTENCE ---
+
+    // Load user from LocalStorage
+    function loadLocalUser() {
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      const storedProfile = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      if (storedUser && storedProfile) {
+        try {
+          currentUser = JSON.parse(storedUser);
+          userProfile = JSON.parse(storedProfile);
+          // Verify with Auth if possible, but for offline first show UI
+          if (currentUser && userProfile) {
+             showMainApp();
+             // Background check auth
+             onAuthStateChanged(auth, (user) => {
+                if (!user) {
+                    logout();
+                }
+             });
+          }
+        } catch (e) {
+          localStorage.removeItem(STORAGE_KEYS.USER);
+          localStorage.removeItem(STORAGE_KEYS.PROFILE);
+        }
+      } else {
+          // Check auth directly
+          onAuthStateChanged(auth, (user) => {
+            if (user) {
+               currentUser = { uid: user.uid, email: user.email };
+               localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser));
+               fetchUserProfile();
+            } else {
+                loginScreen.classList.remove('hidden');
+            }
+          });
+      }
+    }
+
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = loginEmail.value;
@@ -444,7 +531,8 @@
       btnLoginSubmit.innerText = "MEMPROSES...";
       authFeedback.innerText = "";
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // onAuthStateChanged will handle the UI update
       } catch (error) {
         authFeedback.innerHTML = `<span class="text-red-500">${error.message}</span>`;
       } finally {
@@ -453,7 +541,19 @@
       }
     });
 
-    // --- FETCH PROFILE ---
+    function logout() {
+      signOut(auth).then(() => {
+        localStorage.removeItem(STORAGE_KEYS.USER);
+        localStorage.removeItem(STORAGE_KEYS.PROFILE);
+        window.location.reload();
+      }).catch((error) => {
+        console.error("Logout Error:", error);
+      });
+    }
+    document.getElementById('btn-logout-desktop').addEventListener('click', logout);
+    document.getElementById('btn-logout-mobile').addEventListener('click', logout);
+
+    // --- FETCH & SYNC PROFILE ---
     async function fetchUserProfile() {
       if (!currentUser) return;
       try {
@@ -462,50 +562,60 @@
         if (userDoc.exists()) {
           userProfile = userDoc.data();
         } else {
+          // Create default profile if not exists
           const newProfile = {
             uid: currentUser.uid,
-            name: "Karyawan",
+            name: "Karyawan Barbermark",
             email: currentUser.email,
             job: "Capster",
-            branch: "Cabang Parung Panjang",
+            branch: "Kolega Barbershop Batavia",
             avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.uid}`
           };
           await setDoc(userDocRef, newProfile);
           userProfile = newProfile;
         }
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        updateProfileUI();
+        // Save to local storage
+        localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(userProfile));
+        showMainApp();
       } catch (error) {
         console.error("Gagal ambil profil:", error);
+        authFeedback.innerHTML = `<span class="text-red-500">Gagal memuat profil. Cek koneksi.</span>`;
       }
     }
 
-    // --- AUTH STATE LISTENER ---
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        loginScreen.style.opacity = '0';
-        setTimeout(() => {
-          loginScreen.classList.add('hidden');
-          mainApp.classList.remove('hidden');
-          switchTab('absensi');
-          initCamera();
-        }, 500);
-        fetchUserProfile();
-        loadHistoryFromFirestore();
-      } else {
-        currentUser = null;
-        userProfile = null;
-        hasCheckedInToday = false;
-        hasCheckedOutToday = false;
-        localStorage.removeItem('userProfile');
-        mainApp.classList.add('hidden');
-        loginScreen.classList.remove('hidden');
-        loginScreen.style.opacity = '1';
-        if(currentStream) stopCamera();
-      }
-    });
+    function showMainApp() {
+      loginScreen.style.opacity = '0';
+      setTimeout(() => {
+        loginScreen.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        switchTab('absensi');
+        initCamera();
+        updateTime();
+        setInterval(updateTime, 1000);
+        getLocation();
+      }, 500);
+      updateProfileUI();
+      loadHistoryFromFirestore();
+    }
 
+    // --- AUTH STATE LISTENER ---
+    if (!localStorage.getItem(STORAGE_KEYS.USER)) {
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = { uid: user.uid, email: user.email };
+                localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser));
+                fetchUserProfile();
+            } else {
+                currentUser = null;
+                userProfile = null;
+                loginScreen.classList.remove('hidden');
+            }
+        });
+    } else {
+        loadLocalUser();
+    }
+
+    // --- UI UPDATES ---
     function stopCamera() {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
@@ -513,7 +623,6 @@
       }
     }
 
-    // --- UPDATE PROFILE UI ---
     function updateProfileUI() {
       if (!userProfile) return;
       const avatar = userProfile.avatarUrl;
@@ -533,7 +642,96 @@
       if (userProfile.branch) inputBranch.value = userProfile.branch;
     }
 
-    // --- STATS LOGIC (DENGAN SISTEM ALPHA 24 JAM) ---
+    function updateTime() {
+      const now = new Date();
+      liveTime.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace('.', ':').replace('.', ':');
+      const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      liveDate.textContent = now.toLocaleDateString('id-ID', options);
+      
+      // Greeting
+      const hour = now.getHours();
+      let greet = "SELAMAT PAGI";
+      if (hour >= 11 && hour < 15) greet = "SELAMAT SIANG";
+      else if (hour >= 15 && hour < 18) greet = "SELAMAT SORE";
+      else if (hour >= 18) greet = "SELAMAT MALAM";
+      profileGreeting.textContent = greet;
+
+      updateAttendanceUI();
+    }
+
+    // --- GET ADDRESS (NAMANYA JALAN, DAERAH, KOTA) ---
+    // Menggunakan OpenStreetMap Nominatim API (Gratis, tanpa API Key)
+    async function getAddressFromCoords(lat, lon) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'BarbermarkApp/1.0 (contact@barbermark.com)' // User-Agent disarankan oleh Nominatim
+          }
+        });
+        if (!response.ok) throw new Error("Geocoding gagal");
+        const data = await response.json();
+        
+        // Format alamat utama: Jalan, Kecamatan, Kota
+        // display_name biasanya format lengkap: "Nama Jalan, Kecamatan, Kota, Provinsi, Kode Pos, Negara"
+        if (data && data.display_name) {
+          return data.display_name;
+        }
+        throw new Error("Alamat tidak ditemukan");
+      } catch (error) {
+        console.error("Reverse Geocoding Error:", error);
+        return null;
+      }
+    }
+
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            
+            // Set ke koordinat dulu sebagai fallback
+            const coords = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+            locationString = coords; 
+            
+            // Tampilkan loading state untuk mencari alamat
+            liveLocation.textContent = "Mencari nama lokasi...";
+            locSpinner.classList.remove('hidden');
+
+            // Cari nama alamat
+            const address = await getAddressFromCoords(latitude, longitude);
+
+            if (address) {
+              locationString = address; // Update location string dengan alamat lengkap
+              
+              // Tampilkan alamat di UI, tapi dipotong jika terlalu panjang
+              const shortAddress = address.length > 50 ? address.substring(0, 50) + "..." : address;
+              liveLocation.textContent = shortAddress;
+              liveLocation.title = address; // Hover untuk melihat alamat lengkap
+            } else {
+              // Jika gagal reverse geocode, pakai koordinat
+              liveLocation.textContent = `Lokasi Terdeteksi (Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)})`;
+            }
+
+            liveLocation.classList.remove('text-red-400');
+            liveLocation.classList.add('text-green-400');
+            locSpinner.classList.add('hidden');
+          },
+          (error) => {
+            locationString = "Lokasi Tidak Ditemukan";
+            liveLocation.textContent = "Gagal Deteksi Lokasi";
+            liveLocation.classList.remove('text-red-400');
+            liveLocation.classList.add('text-zinc-400');
+            locSpinner.classList.add('hidden');
+          }
+        );
+      } else {
+        liveLocation.textContent = "Geolocation tidak didukung";
+        locSpinner.classList.add('hidden');
+      }
+    }
+
+    // --- STATS LOGIC ---
     function checkAlphaStatusAndRenderStats() {
       let hadir = 0, telat = 0, izin = 0, alpha = 0;
       const attendedDays = new Set();
@@ -548,7 +746,6 @@
       attendanceHistory.forEach(rec => {
         const dateKey = rec.dateKey;
         if (last30Days.includes(dateKey)) {
-          // Jika ada absensi masuk/pulang atau izin disetujui, dihitung hadir
           if (rec.type === 'ABSENSI' || (rec.type === 'IZIN' && rec.leaveStatus === 'APPROVED')) {
             attendedDays.add(dateKey);
           }
@@ -562,7 +759,6 @@
         }
       });
 
-      // Hitung Alpha (Tidak ada absensi sama sekali dalam 24 jam di hari tersebut)
       last30Days.forEach(dateKey => {
         if (!attendedDays.has(dateKey)) alpha++;
       });
@@ -573,7 +769,7 @@
       statAlpha.innerText = alpha;
     }
 
-    // --- LOAD HISTORY & LIMIT CHECK ---
+    // --- LOAD HISTORY ---
     async function loadHistoryFromFirestore() {
       if (!currentUser || !userProfile) return;
       historyList.innerHTML = `<div class="p-8 text-center text-zinc-500"><div class="loader"></div></div>`;
@@ -627,58 +823,62 @@
         attendanceHistory = records;
         checkAlphaStatusAndRenderStats();
 
-        historyList.innerHTML = '';
-        if (records.length === 0) {
-          historyList.innerHTML = '<div class="p-8 text-center text-zinc-500">Belum ada riwayat absensi.</div>';
-          return;
-        }
-        records.forEach((rec) => {
-          const timeStr = rec.dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-          const dateStr = rec.dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-          rec.dateKey = rec.dateObj.toISOString().split('T')[0];
-          let statusColor = "text-green-400", statusBg = "bg-green-500/20";
-          let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-          let statusText = rec.shift === 'PULANG' ? 'PULANG' : 'MASUK';
-          if(rec.status === 'TERLAMBAT') {
-            statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20";
-            icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-            statusText = "TERLAMBAT";
-          } else if (rec.type === 'IZIN') {
-            statusColor = "text-blue-400"; statusBg = "bg-blue-500/20";
-            icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
-            if (rec.leaveStatus === 'APPROVED') { statusText = "IZIN DISETUJUI"; statusColor = "text-green-400"; statusBg = "bg-green-500/20"; }
-            else if (rec.leaveStatus === 'REJECTED') { statusText = "IZIN DITOLAK"; statusColor = "text-red-400"; statusBg = "bg-red-500/20"; }
-            else { statusText = "IZIN PENDING"; statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20"; }
-          } else if (rec.shift === 'PULANG') {
-            statusColor = "text-zinc-300"; statusBg = "bg-zinc-500/20";
-            statusText = "PULANG";
-          }
-          let mediaContent = rec.photoUrl ?
-            `<img src="${rec.photoUrl}" onclick="window.viewImage('${rec.photoUrl}')" class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover cursor-pointer border border-white/10 hover:border-white/40 transition-colors" alt="Bukti">` :
-            (rec.reason ? `<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs text-center p-1 border border-white/10">IZIN</div>` : `<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs text-center p-1">-</div>`);
-          const html = `
-            <div class="p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-800/30 transition-colors border-b border-white/5">
-              <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${statusBg} ${statusColor} flex items-center justify-center flex-shrink-0">${icon}</div>
-                <div class="flex-1 min-w-0">
-                  <p class="font-bold text-white text-sm sm:text-base truncate">${statusText}</p>
-                  <p class="text-xs text-zinc-400">${dateStr} • ${timeStr}</p>
-                  ${rec.location ? `<p class="text-[10px] text-zinc-500 truncate mt-0.5">📍 ${rec.location}</p>` : ''}
-                  ${rec.reason ? `<p class="text-[10px] text-zinc-500 truncate mt-0.5">📝 ${rec.reason}</p>` : ''}
-                </div>
-              </div>
-              <div class="flex-shrink-0 ml-2">${mediaContent}</div>
-            </div>
-          `;
-          historyList.insertAdjacentHTML('beforeend', html);
-        });
+        renderHistoryList(records);
       } catch (error) {
         console.error("Error load history:", error);
         historyList.innerHTML = '<div class="p-8 text-center text-zinc-500">Gagal memuat riwayat.</div>';
       }
     }
 
-    // --- LOGIC WAKTU ABSEN (JAM 9:30 - 10:15) & PULANG (10:00) ---
+    function renderHistoryList(records) {
+      historyList.innerHTML = '';
+      if (records.length === 0) {
+        historyList.innerHTML = '<div class="p-8 text-center text-zinc-500">Belum ada riwayat absensi.</div>';
+        return;
+      }
+      records.forEach((rec) => {
+        const timeStr = rec.dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = rec.dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        rec.dateKey = rec.dateObj.toISOString().split('T')[0];
+        let statusColor = "text-green-400", statusBg = "bg-green-500/20";
+        let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+        let statusText = rec.shift === 'PULANG' ? 'PULANG' : 'MASUK';
+        if(rec.status === 'TERLAMBAT') {
+          statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20";
+          icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+          statusText = "TERLAMBAT";
+        } else if (rec.type === 'IZIN') {
+          statusColor = "text-blue-400"; statusBg = "bg-blue-500/20";
+          icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
+          if (rec.leaveStatus === 'APPROVED') { statusText = "IZIN DISETUJUI"; statusColor = "text-green-400"; statusBg = "bg-green-500/20"; }
+          else if (rec.leaveStatus === 'REJECTED') { statusText = "IZIN DITOLAK"; statusColor = "text-red-400"; statusBg = "bg-red-500/20"; }
+          else { statusText = "IZIN PENDING"; statusColor = "text-yellow-400"; statusBg = "bg-yellow-500/20"; }
+        } else if (rec.shift === 'PULANG') {
+          statusColor = "text-zinc-300"; statusBg = "bg-zinc-500/20";
+          statusText = "PULANG";
+        }
+        let mediaContent = rec.photoUrl ?
+          `<img src="${rec.photoUrl}" onclick="window.viewImage('${rec.photoUrl}')" class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover cursor-pointer border border-white/10 hover:border-white/40 transition-colors" alt="Bukti">` :
+          (rec.reason ? `<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs text-center p-1 border border-white/10">IZIN</div>` : `<div class="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs text-center p-1">-</div>`);
+        const html = `
+          <div class="p-4 sm:p-5 flex items-center justify-between hover:bg-zinc-800/30 transition-colors border-b border-white/5">
+            <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${statusBg} ${statusColor} flex items-center justify-center flex-shrink-0">${icon}</div>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-white text-sm sm:text-base truncate">${statusText}</p>
+                <p class="text-xs text-zinc-400">${dateStr} • ${timeStr}</p>
+                ${rec.location ? `<p class="text-[10px] text-zinc-500 truncate mt-0.5" title="${rec.location}">📍 ${rec.location.substring(0, 40)}${rec.location.length>40?'...':''}</p>` : ''}
+                ${rec.reason ? `<p class="text-[10px] text-zinc-500 truncate mt-0.5">📝 ${rec.reason}</p>` : ''}
+              </div>
+            </div>
+            <div class="flex-shrink-0 ml-2">${mediaContent}</div>
+          </div>
+        `;
+        historyList.insertAdjacentHTML('beforeend', html);
+      });
+    }
+
+    // --- LOGIC WAKTU ABSEN ---
     function updateAttendanceUI() {
       const now = new Date();
       const hour = now.getHours();
@@ -686,7 +886,6 @@
       const totalMinutes = hour * 60 + minute;
 
       if (hasCheckedInToday && hasCheckedOutToday) {
-        // Sudah MASUK dan PULANG
         btnCapture.classList.add('opacity-50', 'cursor-not-allowed');
         btnCapture.disabled = true;
         shiftBadge.textContent = "ABSEN SELESAI";
@@ -695,7 +894,6 @@
         statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-white/20 bg-white/10 text-zinc-400 backdrop-blur-md";
         containerBtnCapture.classList.add('hidden');
       } else if (hasCheckedInToday && !hasCheckedOutToday) {
-        // Sudah MASUK, mode PULANG
         currentAttendanceStatus = { type: 'PULANG', status: 'PULANG', isLate: false };
         btnCapture.classList.remove('opacity-50', 'cursor-not-allowed');
         btnCapture.disabled = false;
@@ -705,7 +903,6 @@
         statusBadge.textContent = "SIAP PULANG";
         statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-white/20 bg-white/10 text-zinc-300 backdrop-blur-md";
       } else {
-        // Belum MASUK, mode MASUK
         currentAttendanceStatus.type = 'MASUK';
         btnCapture.classList.remove('opacity-50', 'cursor-not-allowed');
         btnCapture.disabled = false;
@@ -726,7 +923,6 @@
             statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/50";
           }
         } else {
-          // Belum waktunya absen masuk (sebelum jam 9:30)
           currentAttendanceStatus.isLate = false;
           currentAttendanceStatus.status = 'BELUM WAKTUNYA';
           statusBadge.textContent = "BELUM WAKTUNYA";
@@ -735,7 +931,7 @@
       }
     }
 
-    // --- CAMERA ---
+    // --- CAMERA & CAPTURE ---
     async function initCamera() {
       try {
         currentStream = await navigator.mediaDevices.getUserMedia({
@@ -753,7 +949,6 @@
       }
     }
 
-    // --- CAPTURE (MANUAL TOMBOL) ---
     function capturePhoto() {
       const now = new Date();
       const totalMinutes = now.getHours() * 60 + now.getMinutes();
@@ -771,7 +966,7 @@
         }
       }
 
-      // CEK LIMIT (Sudah absen)
+      // CEK LIMIT
       if (currentAttendanceStatus.type === 'MASUK' && hasCheckedInToday) {
         showModal('Sudah Absen', 'Anda sudah melakukan absen MASUK hari ini. Tunggu shift PULANG.', 'warning');
         return;
@@ -809,7 +1004,7 @@
       containerBtnSubmit.classList.add('hidden');
     });
 
-    // --- SUBMIT ABSENSI ---
+    // --- SUBMIT ATTENDANCE ---
     btnSubmit.addEventListener('click', async () => {
       if (!capturedResult.src) return;
       btnSubmit.disabled = true;
@@ -833,75 +1028,33 @@
 
         const now = new Date();
         const todayKey = now.toISOString().split('T')[0];
-
-        // Ambil status terbaru sebelum dikirim
-        const totalMinutes = now.getHours() * 60 + now.getMinutes();
-        let finalStatus = currentAttendanceStatus.status;
-        let finalIsLate = currentAttendanceStatus.isLate;
-
-        if (currentAttendanceStatus.type === 'MASUK') {
-          finalIsLate = totalMinutes >= SHIFT_TELAT;
-          finalStatus = finalIsLate ? 'TERLAMBAT' : 'TEPAT WAKTU';
-        }
-
-        const attendanceData = {
+        
+        // locationString sekarang berisi Nama Jalan/Daerah/Kota
+        await addDoc(collection(db, "attendance"), {
           uid: currentUser.uid,
-          userName: userProfile.name,
+          name: userProfile.name,
           branch: userProfile.branch,
-          job: userProfile.job,
           type: currentAttendanceStatus.type,
-          status: finalStatus,
-          isLate: finalIsLate,
-          location: locationString,
+          status: currentAttendanceStatus.status,
+          isLate: currentAttendanceStatus.isLate,
+          location: locationString, // Disimpan sebagai string nama alamat
           photoUrl: photoUrl,
-          timestamp: Timestamp.fromDate(now),
-          dateStr: todayKey
-        };
+          dateStr: todayKey,
+          timestamp: Timestamp.fromDate(now)
+        });
 
-        await addDoc(collection(db, "attendance"), attendanceData);
-
-        if (currentAttendanceStatus.type === 'MASUK') {
-          hasCheckedInToday = true;
-        } else if (currentAttendanceStatus.type === 'PULANG') {
-          hasCheckedOutToday = true;
-        }
-
-        if (hasCheckedInToday && hasCheckedOutToday) {
-          btnCapture.classList.add('opacity-50', 'cursor-not-allowed');
-          btnCapture.disabled = true;
-          shiftBadge.textContent = "ABSEN SELESAI";
-          shiftBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-red-500/50 bg-red-500/20 text-red-400 backdrop-blur-md";
-          statusBadge.textContent = "HARI INI SELESAI";
-          statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-white/20 bg-white/10 text-zinc-400 backdrop-blur-md";
-          containerBtnCapture.classList.add('hidden');
-          capturedResult.classList.add('hidden');
-          videoFeed.classList.remove('hidden');
-          containerBtnSubmit.classList.add('hidden');
-          showModal('Absensi Selesai!', `Berhasil absen ${currentAttendanceStatus.type}. Anda sudah menyelesaikan absen hari ini.`, 'success');
-        } else if (hasCheckedInToday && !hasCheckedOutToday) {
-          currentAttendanceStatus = { type: 'PULANG', status: 'PULANG', isLate: false };
-          shiftBadge.textContent = "SHIFT PULANG";
-          shiftBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-blue-500/50 bg-blue-500/20 text-blue-400 backdrop-blur-md";
-          statusBadge.textContent = "SIAP PULANG";
-          statusBadge.className = "px-3 py-1 rounded-lg text-xs font-bold border border-white/20 bg-white/10 text-zinc-300 backdrop-blur-md";
-          capturedResult.classList.add('hidden');
-          videoFeed.classList.remove('hidden');
-          containerBtnCapture.classList.remove('hidden');
-          containerBtnSubmit.classList.add('hidden');
-          showModal('Berhasil Absen MASUK!', 'Jangan lupa absen PULANG nanti.', 'success');
-        } else {
-          capturedResult.classList.add('hidden');
-          videoFeed.classList.remove('hidden');
-          containerBtnCapture.classList.remove('hidden');
-          containerBtnSubmit.classList.add('hidden');
-          updateAttendanceUI();
-          showModal('Berhasil!', `Absen ${currentAttendanceStatus.type} berhasil.`, 'success');
-        }
-
+        showModal('Berhasil', `Data ${currentAttendanceStatus.type} berhasil disimpan.`);
+        
+        capturedResult.classList.add('hidden');
+        videoFeed.classList.remove('hidden');
+        containerBtnCapture.classList.remove('hidden');
+        containerBtnSubmit.classList.add('hidden');
+        
         loadHistoryFromFirestore();
+
       } catch (error) {
         console.error("Submit Error:", error);
-        showModal('Gagal', error.message || 'Terjadi kesalahan', 'error');
+        showModal('Gagal', 'Terjadi kesalahan saat menyimpan data.', 'warning');
       } finally {
         resetSubmitBtn();
       }
@@ -913,139 +1066,53 @@
       submitSpinner.classList.add('hidden');
     }
 
-    // --- LIVE TIME & LOCATION ---
-    function updateLiveTime() {
-      const now = new Date();
-      liveTime.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      liveDate.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      
-      // Update badge status secara real-time
-      updateAttendanceUI();
-    }
-    setInterval(updateLiveTime, 1000);
-    updateLiveTime();
-
-    // --- REVERSE GEOCODING (LAT/LNG KE ALAMAT) ---
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords;
-          try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
-            const data = await response.json();
-            
-            if (data && data.display_name) {
-              locationString = data.display_name;
-              liveLocation.textContent = locationString;
-            } else {
-              locationString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-              liveLocation.textContent = locationString;
-            }
-          } catch (err) {
-            console.error("Gagal mengambil alamat:", err);
-            locationString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-            liveLocation.textContent = locationString;
-          }
-          locSpinner.classList.add('hidden');
-        },
-        (err) => {
-          locationString = "Lokasi Tidak Tersedia";
-          liveLocation.textContent = locationString;
-          locSpinner.classList.add('hidden');
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
-
     // --- TAB SWITCHING ---
     function switchTab(tab) {
       if (tab === 'absensi') {
         viewAbsensi.classList.remove('hidden');
         viewProfile.classList.add('hidden');
         viewEditProfile.classList.add('hidden');
-        sidebarTabAbsensi.classList.add('bg-red-500', 'text-white');
-        sidebarTabAbsensi.classList.remove('text-zinc-400');
-        sidebarTabProfile.classList.remove('bg-red-500', 'text-white');
-        sidebarTabProfile.classList.add('text-zinc-400');
+        
+        sidebarTabAbsensi.classList.add('bg-red-500', 'text-white', 'shadow-lg');
+        sidebarTabAbsensi.classList.remove('text-zinc-400', 'hover:bg-zinc-800/50');
+        sidebarTabProfile.classList.remove('bg-red-500', 'text-white', 'shadow-lg');
+        sidebarTabProfile.classList.add('text-zinc-400', 'hover:bg-zinc-800/50');
+        
         mobileTabAbsensi.classList.add('text-red-500');
         mobileTabAbsensi.classList.remove('text-zinc-400');
         mobileTabProfile.classList.add('text-zinc-400');
         mobileTabProfile.classList.remove('text-red-500');
+        
+        if (!currentStream) initCamera();
       } else if (tab === 'profile') {
         viewAbsensi.classList.add('hidden');
         viewProfile.classList.remove('hidden');
         viewEditProfile.classList.add('hidden');
-        sidebarTabProfile.classList.add('bg-red-500', 'text-white');
-        sidebarTabProfile.classList.remove('text-zinc-400');
-        sidebarTabAbsensi.classList.remove('bg-red-500', 'text-white');
-        sidebarTabAbsensi.classList.add('text-zinc-400');
+
+        sidebarTabProfile.classList.add('bg-red-500', 'text-white', 'shadow-lg');
+        sidebarTabProfile.classList.remove('text-zinc-400', 'hover:bg-zinc-800/50');
+        sidebarTabAbsensi.classList.remove('bg-red-500', 'text-white', 'shadow-lg');
+        sidebarTabAbsensi.classList.add('text-zinc-400', 'hover:bg-zinc-800/50');
+
         mobileTabProfile.classList.add('text-red-500');
         mobileTabProfile.classList.remove('text-zinc-400');
         mobileTabAbsensi.classList.add('text-zinc-400');
         mobileTabAbsensi.classList.remove('text-red-500');
-        const hour = new Date().getHours();
-        let greeting = "SELAMAT PAGI";
-        if (hour >= 11 && hour < 15) greeting = "SELAMAT SIANG";
-        else if (hour >= 15 && hour < 18) greeting = "SELAMAT SORE";
-        else if (hour >= 18 || hour < 4) greeting = "SELAMAT MALAM";
-        profileGreeting.textContent = greeting;
+
+        stopCamera();
       } else if (tab === 'edit-profile') {
         viewAbsensi.classList.add('hidden');
         viewProfile.classList.add('hidden');
         viewEditProfile.classList.remove('hidden');
       }
     }
-
+    
     sidebarTabAbsensi.addEventListener('click', () => switchTab('absensi'));
     sidebarTabProfile.addEventListener('click', () => switchTab('profile'));
     mobileTabAbsensi.addEventListener('click', () => switchTab('absensi'));
     mobileTabProfile.addEventListener('click', () => switchTab('profile'));
 
-    document.getElementById('btn-edit-profile-trigger').addEventListener('click', () => switchTab('edit-profile'));
-    document.getElementById('btn-edit-profile-small').addEventListener('click', () => switchTab('edit-profile'));
-    document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
-    document.getElementById('btn-save-profile').addEventListener('click', saveProfile);
-    document.getElementById('btn-save-profile-mobile').addEventListener('click', saveProfile);
-
-    // --- EDIT PROFILE ---
-    document.getElementById('btn-change-avatar').addEventListener('click', () => inputFileAvatar.click());
-    inputFileAvatar.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        tempAvatarFile = file;
-        const reader = new FileReader();
-        reader.onload = (ev) => editAvatarPreview.src = ev.target.result;
-        reader.readAsDataURL(file);
-      }
-    });
-
-    async function saveProfile() {
-      if (!userProfile) return;
-      try {
-        let avatarUrl = userProfile.avatarUrl;
-        if (tempAvatarFile) {
-          avatarUrl = await uploadImageToCloudinary(tempAvatarFile);
-          tempAvatarFile = null;
-        }
-        const updateData = {
-          name: inputName.value,
-          job: inputJob.value,
-          branch: inputBranch.value,
-          avatarUrl: avatarUrl
-        };
-        await updateDoc(doc(db, "users", currentUser.uid), updateData);
-        userProfile = { ...userProfile, ...updateData };
-        localStorage.setItem('userProfile', JSON.stringify(userProfile));
-        updateProfileUI();
-        switchTab('profile');
-        showModal('Berhasil', 'Profil berhasil diperbarui', 'success');
-      } catch (error) {
-        console.error("Save Profile Error:", error);
-        showModal('Gagal', error.message, 'error');
-      }
-    }
-
-    // --- PERMISSION ---
+    // --- PERMISSION / LEAVE REQUEST ---
     btnAddPermission.addEventListener('click', () => {
       permissionTriggerContainer.classList.add('hidden');
       permissionFormContainer.classList.remove('hidden');
@@ -1058,65 +1125,90 @@
     btnSendPermission.addEventListener('click', async () => {
       const reason = inputReason.value.trim();
       if (!reason) {
-        showModal('Peringatan', 'Alasan tidak boleh kosong', 'warning');
+        showModal('Mohon isi alasan izin', '', 'warning');
         return;
       }
       try {
         await addDoc(collection(db, "leave_requests"), {
           uid: currentUser.uid,
-          userName: userProfile.name,
+          name: userProfile.name,
           branch: userProfile.branch,
           reason: reason,
           status: 'PENDING',
           createdAt: Timestamp.fromDate(new Date())
         });
-        inputReason.value = '';
+        showModal('Pengajuan Terkirim', 'Admin akan memverifikasi pengajuan Anda.');
         permissionTriggerContainer.classList.remove('hidden');
         permissionFormContainer.classList.add('hidden');
-        showModal('Berhasil', 'Pengajuan izin terkirim', 'success');
+        inputReason.value = '';
         loadHistoryFromFirestore();
       } catch (error) {
-        showModal('Gagal', error.message, 'error');
+        console.error(error);
+        showModal('Gagal', 'Gagal mengirim pengajuan.', 'warning');
       }
     });
 
-    // --- LOGOUT ---
-    function doLogout() {
-      if (currentStream) stopCamera();
-      signOut(auth);
-    }
-    document.getElementById('btn-logout-desktop').addEventListener('click', doLogout);
-    document.getElementById('btn-logout-mobile').addEventListener('click', doLogout);
+    // --- EDIT PROFILE ---
+    document.getElementById('btn-edit-profile-trigger').addEventListener('click', () => switchTab('edit-profile'));
+    document.getElementById('btn-edit-profile-small').addEventListener('click', () => switchTab('edit-profile'));
+    document.getElementById('btn-cancel-edit').addEventListener('click', () => switchTab('profile'));
 
-    // --- MODAL ---
-    function showModal(title, desc, type = 'success') {
-      modalTitle.textContent = title;
-      modalDesc.textContent = desc;
-      const iconContainer = document.getElementById('modal-icon-container');
-      if (type === 'success') {
-        iconContainer.className = 'w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mx-auto mb-4';
-      } else if (type === 'error') {
-        iconContainer.className = 'w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4';
-      } else if (type === 'warning') {
-        iconContainer.className = 'w-16 h-16 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center mx-auto mb-4';
+    document.getElementById('btn-change-avatar').addEventListener('click', () => inputFileAvatar.click());
+    inputFileAvatar.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        const file = e.target.files[0];
+        tempAvatarFile = file;
+        editAvatarPreview.src = URL.createObjectURL(file);
       }
-      customModal.classList.remove('hidden');
-      setTimeout(() => {
-        customModal.classList.remove('opacity-0');
-        customModal.querySelector('div').classList.remove('scale-95');
-      }, 10);
-    }
-    modalBtnClose.addEventListener('click', () => {
-      customModal.classList.add('opacity-0');
-      customModal.querySelector('div').classList.add('scale-95');
-      setTimeout(() => customModal.classList.add('hidden'), 300);
     });
 
-    // --- IMAGE PREVIEW ---
-    window.viewImage = (url) => {
-      document.getElementById('modal-img-preview').src = url;
-      document.getElementById('image-modal').classList.add('active');
-    };
+    async function saveProfile() {
+      const newName = inputName.value.trim();
+      const newJob = inputJob.value;
+      const newBranch = inputBranch.value;
+
+      if (!newName || !newJob || !newBranch) {
+        showModal('Data tidak lengkap', 'Mohon lengkapi semua data.', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btn-save-profile');
+      const originalText = btn.innerText;
+      btn.innerText = "Menyimpan...";
+
+      try {
+        let newAvatarUrl = userProfile.avatarUrl;
+        if (tempAvatarFile) {
+          newAvatarUrl = await uploadImageToCloudinary(tempAvatarFile);
+        }
+
+        const updatedProfile = {
+          ...userProfile,
+          name: newName,
+          job: newJob,
+          branch: newBranch,
+          avatarUrl: newAvatarUrl
+        };
+
+        await updateDoc(doc(db, "users", currentUser.uid), updatedProfile);
+        
+        userProfile = updatedProfile;
+        localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(userProfile));
+        
+        updateProfileUI();
+        switchTab('profile');
+        showModal('Berhasil', 'Profil berhasil diperbarui.');
+      } catch (error) {
+        console.error(error);
+        showModal('Gagal', 'Terjadi kesalahan saat menyimpan profil.', 'warning');
+      } finally {
+        btn.innerText = originalText;
+        tempAvatarFile = null;
+      }
+    }
+
+    document.getElementById('btn-save-profile').addEventListener('click', saveProfile);
+    document.getElementById('btn-save-profile-mobile').addEventListener('click', saveProfile);
 
   </script>
 </body>
